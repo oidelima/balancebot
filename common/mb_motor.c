@@ -5,11 +5,14 @@
 *
 *******************************************************************************/
 #include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 #include <rc/motor.h>
 #include <rc/model.h>
 #include <rc/gpio.h>
 #include <rc/pwm.h>
 #include <rc/adc.h>
+#include <rc/time.h>
 #include "mb_motor.h"
 #include "mb_defs.h"
 
@@ -25,8 +28,17 @@ static int init_flag = 0;
 * initialize mb_motor with default frequency
 *******************************************************************************/
 int mb_motor_init(){
-    
-    return mb_motor_init_freq(MB_MOTOR_DEFAULT_PWM_FREQ);
+
+    if (!mb_motor_init_freq(MB_MOTOR_DEFAULT_PWM_FREQ)){
+        init_flag = 1;
+        rc_gpio_init(MDIR1_CHIP, MDIR1_PIN, GPIOHANDLE_REQUEST_OUTPUT);
+        rc_gpio_init(MDIR2_CHIP, MDIR2_PIN, GPIOHANDLE_REQUEST_OUTPUT);
+        return 0;
+    }
+    else{
+        return -1;
+    }
+
 }
 
 /*******************************************************************************
@@ -101,10 +113,26 @@ int mb_motor_set(int motor, double duty){
         return -1;
     }
     if(motor == 1){
-        rc_pwm_set_duty(1,'A',duty);
+        if(duty>=0.0){
+            rc_gpio_set_value(MDIR1_CHIP,MDIR1_PIN, GPIO_HIGH);
+            rc_nanosleep(1E9);
+        }
+        else{
+            rc_gpio_set_value(MDIR1_CHIP,MDIR1_PIN, GPIO_LOW);
+            rc_nanosleep(1E9);
+        }
+        rc_pwm_set_duty(1,'A',abs(duty));
     }
     else if(motor == 2){
-        rc_pwm_set_duty(1,'B',duty);
+        if(duty>=0.0){
+            rc_gpio_set_value(MDIR2_CHIP,MDIR2_PIN, GPIO_HIGH);
+            rc_nanosleep(1E9);
+        }
+        else{
+            rc_gpio_set_value(MDIR2_CHIP,MDIR2_PIN, GPIO_LOW);
+            rc_nanosleep(1E9);
+        }
+        rc_pwm_set_duty(1,'B',abs(duty));
     }
     
     return 0;
@@ -122,8 +150,21 @@ int mb_motor_set_all(double duty){
         return -1;
     }
 
-    rc_pwm_set_duty(1,'A',duty);
-    rc_pwm_set_duty(1,'B',duty);
+    if(duty>=0.0){
+            rc_gpio_set_value(MDIR1_CHIP,MDIR1_PIN, GPIO_HIGH);
+            rc_nanosleep(1E9);
+            rc_gpio_set_value(MDIR2_CHIP,MDIR2_PIN, GPIO_HIGH);
+            rc_nanosleep(1E9);
+        }
+    else{
+            rc_gpio_set_value(MDIR1_CHIP,MDIR1_PIN, GPIO_LOW);
+            rc_nanosleep(1E9);
+            rc_gpio_set_value(MDIR2_CHIP,MDIR2_PIN, GPIO_LOW);
+            rc_nanosleep(1E9);
+        }
+
+    rc_pwm_set_duty(1,'A',abs(duty));
+    rc_pwm_set_duty(1,'B',abs(duty));
     
     return 0;
 }

@@ -33,5 +33,7 @@
 #define DT                       0.01 // 1/sample_rate
 #define PRINTF_HZ                  10 // rate of print loop
 #define RC_CTL_HZ                  25 // rate of RC data update
+#define GPIO_HIGH                  0 // set for gpio HIGH
+#define GPIO_LOW                   1 // set for gpio LOW
 
 #endif
