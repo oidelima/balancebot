@@ -36,7 +36,7 @@ int mb_motor_init(){
 *******************************************************************************/
 int mb_motor_init_freq(int pwm_freq_hz){
     
-    return 0;
+    return rc_pwm_init(1, pwm_freq_hz);
 }
 
 /*******************************************************************************
@@ -66,7 +66,7 @@ int mb_motor_brake(int brake_en){
         return -1;
     }
 
-   return 0;
+   return  mb_motor_set_all(0.0);
 }
 
 /*******************************************************************************
@@ -82,7 +82,7 @@ int mb_motor_disable(){
         return -1;
     }
     
-    return 0;
+    return rc_pwm_cleanup(1);
 }
 
 
@@ -100,7 +100,13 @@ int mb_motor_set(int motor, double duty){
         fprintf(stderr,"ERROR: trying to rc_set_motor_all before they have been initialized\n");
         return -1;
     }
-
+    if(motor == 1){
+        rc_pwm_set_duty(1,'A',duty);
+    }
+    else if(motor == 2){
+        rc_pwm_set_duty(1,'B',duty);
+    }
+    
     return 0;
 }
 
@@ -115,6 +121,9 @@ int mb_motor_set_all(double duty){
         printf("ERROR: trying to rc_set_motor_all before they have been initialized\n");
         return -1;
     }
+
+    rc_pwm_set_duty(1,'A',duty);
+    rc_pwm_set_duty(1,'B',duty);
     
     return 0;
 }
