@@ -10,8 +10,8 @@
 #define MB_DEFS_H
 
 #define DEFAULT_PWM_FREQ        25000 // period of motor drive pwm
-#define LEFT_MOTOR                  1 // id of left motor
-#define RIGHT_MOTOR                 2 // id of right motor
+#define LEFT_MOTOR                  2 // id of left motor
+#define RIGHT_MOTOR                 1 // id of right motor
 #define MDIR1_CHIP                  1 // chip of MDIR1 gpio pin
 #define MDIR1_PIN                   28 // MDIRR1 gpio(CHIP.PIN) P9.12
 #define MDIR2_CHIP                  1 // chip of MDIR2 gpio pin
@@ -33,7 +33,5 @@
 #define DT                       0.01 // 1/sample_rate
 #define PRINTF_HZ                  10 // rate of print loop
 #define RC_CTL_HZ                  25 // rate of RC data update
-#define GPIO_HIGH                  0 // set for gpio HIGH
-#define GPIO_LOW                   1 // set for gpio LOW
 
 #endif
