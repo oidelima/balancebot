@@ -10,10 +10,11 @@
 // #define MDIR1_PIN                    //MDIRR1 gpio(CHIP.PIN) P9.12
 // #define MDIR2_CHIP              
 // #define MDIR2_PIN                    //MDIRR2 gpio(CHIP.PIN)
-#define MOT_BRAKE_EN_PIN   0,20         // gpio0.20  P9.41
+// #define MOT_BRAKE_EN_PIN   0,20         // gpio0.20  P9.41
 // #define MOT1_CS_PIN                  // analog in of motor 1 current sense
 // #define MOT2_CS_PIN                  // analog in of motor 2 current sense
-#define MB_MOTOR_DEFAULT_PWM_FREQ 25000
+// #define MB_MOTOR_DEFAULT_PWM_FREQ 25000
+
 
 //fuctions
 int mb_motor_init();

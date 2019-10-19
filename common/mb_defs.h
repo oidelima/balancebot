@@ -17,8 +17,8 @@
 #define MDIR2_CHIP                  1 // chip of MDIR2 gpio pin
 #define MDIR2_PIN                   16 //  MDIRR2 gpio(CHIP.PIN) P9.15
 #define MOT_BRAKE_EN             0,20  // gpio0.20  P9.41
-#define MOT_1_POL                   0 // polarity of motor 1
-#define MOT_2_POL                   0 // polarity of motor 2
+#define MOT_1_POL                   1 // polarity of motor 1
+#define MOT_2_POL                   -1 // polarity of motor 2
 #define ENC_1_POL                   0 // polarity of encoder 1
 #define ENC_2_POL                   0 // polarity of encoder 2
 #define MOT_1_CS                    AIN0 // analog in of motor 1 current sense

@@ -29,7 +29,7 @@ static int init_flag = 0;
 *******************************************************************************/
 int mb_motor_init(){
     // fprintf(stderr,"set ferquecy: %d \n", MB_MOTOR_DEFAULT_PWM_FREQ);
-    if (mb_motor_init_freq(MB_MOTOR_DEFAULT_PWM_FREQ) == 0){
+    if (mb_motor_init_freq(DEFAULT_PWM_FREQ) == 0){
         init_flag = 1;
         
         // Motor direction pin
@@ -69,6 +69,7 @@ int mb_motor_cleanup(){
 
     //  TODO:
     // ??????????????????
+    // to set_all(0.0) and brake off?
 
 
     return 0;
@@ -88,15 +89,17 @@ int mb_motor_brake(int brake_en){
     }
 
     // set brake GPIO to HIGH
-    if(brake_en){
-        // Brake on!!
-        fprintf(stderr,"=== Break ON in mb_motor_brake! ===\n");
-        rc_gpio_set_value(MOT_BRAKE_EN_PIN, 1);
-    }else{
-        // Brake off!!
-        fprintf(stderr,"=== Break OFF in mb_motor_brake! ===\n");
-        rc_gpio_set_value(MOT_BRAKE_EN_PIN, 0);
-    }
+    // if(brake_en){
+    //     // Brake on!!
+    //     fprintf(stderr,"=== Break ON in mb_motor_brake! ===\n");
+    //     rc_gpio_set_value(MOT_BRAKE_EN, 1);
+    // }else{
+    //     // Brake off!!
+    //     fprintf(stderr,"=== Break OFF in mb_motor_brake! ===\n");
+    //     rc_gpio_set_value(MOT_BRAKE_EN, 0);
+    // }
+
+    rc_gpio_set_value(MOT_BRAKE_EN, brake_en);
     
     return  0;
 }
@@ -133,6 +136,12 @@ int mb_motor_set(int motor, double duty){
     if(unlikely(!init_flag)){
         fprintf(stderr,"ERROR: trying to rc_set_motor_all before they have been initialized\n");
         return -1;
+    }
+
+    if(motor == 1){
+        duty = duty*MOT_1_POL;
+    }else if(motor == 2){
+        duty = duty*MOT_2_POL;
     }
 
     int direction = 0;
