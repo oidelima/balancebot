@@ -12,6 +12,7 @@
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <getopt.h>
 #include <sys/stat.h>	// for mkdir and chmod
@@ -74,8 +75,11 @@ static void __print_usage(void)
  */
 static void __print_data(void)
 {
+        u_int64_t current;
         printf("\r");
         printf(" ");
+        current = rc_nanos_since_boot();
+        printf("%" PRIu64 " ", current);
         if(show_compass){
                 printf("   %6.1f   |", data.compass_heading_raw*RAD_TO_DEG);
                 printf("   %6.1f   |", data.compass_heading*RAD_TO_DEG);
@@ -131,6 +135,7 @@ static void __print_data(void)
 static void __print_header(void)
 {
         printf(" ");
+        printf("Timestamp |");
         if(show_compass){
                 printf("Raw Compass |");
                 printf("FilteredComp|");
