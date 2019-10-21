@@ -1,5 +1,5 @@
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#ifndef MB_SETTINGS_H
+#define MB_SETTINGS_H
 
 #include <rc/math/filter.h>
 #include <rc/mpu.h>
@@ -23,90 +23,73 @@ typedef struct settings_t{
 	///@{
 	int warnings_en;
 	///@}
-
-	/** @name physical parameters */
-	///@{
-	int num_rotors;
-	rotor_layout_t layout;
-	int dof;
-	thrust_map_t thrust_map;
+	
+	int mpu_sample_rate;
+	char mpu_orientation[128];
 	double v_nominal;
 	int enable_magnetometer; // we suggest leaving as 0 (mag OFF)
 	///@}
 
-	/** @name flight modes */
-	///@{
-	int num_dsm_modes;
-	flight_mode_t flight_mode_1;
-	flight_mode_t flight_mode_2;
-	flight_mode_t flight_mode_3;
-	flight_mode_t flight_mode_4;
-	///@}
+	// /** @name flight modes */
+	// ///@{
+	// int num_dsm_modes;
+	// flight_mode_t flight_mode_1;
+	// flight_mode_t flight_mode_2;
+	// flight_mode_t flight_mode_3;
+	// flight_mode_t flight_mode_4;
+	// ///@}
 
+	// /** @name dsm radio config */
+	// ///@{
+	// int dsm_thr_ch;
+	// int dsm_thr_pol;
+	// int dsm_roll_ch;
+	// int dsm_roll_pol;
+	// int dsm_pitch_ch;
+	// int dsm_pitch_pol;
+	// int dsm_yaw_ch;
+	// int dsm_yaw_pol;
+	// int dsm_mode_ch;
+	// int dsm_mode_pol;
+	// dsm_kill_mode_t dsm_kill_mode;
+	// int dsm_kill_ch;
+	// int dsm_kill_pol;
+	// ///@}
 
-	/** @name dsm radio config */
-	///@{
-	int dsm_thr_ch;
-	int dsm_thr_pol;
-	int dsm_roll_ch;
-	int dsm_roll_pol;
-	int dsm_pitch_ch;
-	int dsm_pitch_pol;
-	int dsm_yaw_ch;
-	int dsm_yaw_pol;
-	int dsm_mode_ch;
-	int dsm_mode_pol;
-	dsm_kill_mode_t dsm_kill_mode;
-	int dsm_kill_ch;
-	int dsm_kill_pol;
-	///@}
+	// /** @name printf settings */
+	// ///@{
+	// int printf_arm;
+	// int printf_altitude;
+	// int printf_rpy;
+	// int printf_sticks;
+	// int printf_setpoint;
+	// int printf_u;
+	// int printf_motors;
+	// int printf_mode;
+	// int printf_xbee; 
+	// int printf_PX4;
+	// ///@}
 
-	/** @name printf settings */
-	///@{
-	int printf_arm;
-	int printf_altitude;
-	int printf_rpy;
-	int printf_sticks;
-	int printf_setpoint;
-	int printf_u;
-	int printf_motors;
-	int printf_mode;
-	int printf_xbee; 
-	int printf_PX4;
-	///@}
-
-	/** @name log settings */
-	///@{
-	int enable_logging;
-	int log_sensors;
-	int log_state;
-	int log_setpoint;
-	int log_control_u;
-	int log_motor_signals;
-	int log_xbee;
-	int log_px4;
-	///@}
-
-	/** @name mavlink stuff */
-	///@{
-	char dest_ip[24];
-	uint8_t my_sys_id;
-	uint16_t mav_port;
+	// /** @name log settings */
+	// ///@{
+	// int enable_logging;
+	// int log_sensors;
+	// int log_state;
+	// int log_setpoint;
+	// int log_control_u;
+	// int log_motor_signals;
+	// int log_xbee;
+	// int log_px4;
+	// ///@}
 
 	/** @name feedback controllers */
 	///@{
-	rc_filter_t roll_controller;
-	rc_filter_t pitch_controller;
-	rc_filter_t yaw_controller;
-	rc_filter_t altitude_controller;
-	rc_filter_t altitude_i_controller;
-	rc_filter_t horiz_vel_ctrl_4dof;
-	rc_filter_t horiz_vel_ctrl_6dof;
-	rc_filter_t horiz_pos_ctrl_4dof;
-	rc_filter_t horiz_pos_i_ctrl_4dof;
-	rc_filter_t horiz_pos_ctrl_6dof;
+	rc_filter_t body_angle_controller;
+	rc_filter_t position_controller;
+	rc_filter_t steering_controller;
+	rc_filter_t horiz_vel_ctrl;
+
 	double max_XY_velocity;
-	double max_Z_velocity;
 	///@}
 
 }settings_t;
