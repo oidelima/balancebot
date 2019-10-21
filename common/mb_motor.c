@@ -39,6 +39,8 @@ int mb_motor_init(){
         // Motor brake pin
         rc_gpio_init(MOT_BRAKE_EN, GPIOHANDLE_REQUEST_OUTPUT);
 
+        rc_adc_init();
+
         return 0;
     }
     
@@ -65,12 +67,13 @@ int mb_motor_cleanup(){
         fprintf(stderr,"ERROR: trying cleanup before motors have been initialized\n");
         return -1;
     }
+    //  TODO: Test!!!
 
+    rc_pwm_cleanup(1);
+	rc_gpio_cleanup(MOT_BRAKE_EN;
 
-    //  TODO:
-    // ??????????????????
-    // to set_all(0.0) and brake off?
-
+    rc_gpio_cleanup(MDIR1_CHIP, MDIR1_PIN);
+    rc_gpio_cleanup(MDIR2_CHIP, MDIR2_PIN);
 
     return 0;
 }
@@ -87,17 +90,6 @@ int mb_motor_brake(int brake_en){
         fprintf(stderr,"ERROR: trying to enable brake before motors have been initialized\n");
         return -1;
     }
-
-    // set brake GPIO to HIGH
-    // if(brake_en){
-    //     // Brake on!!
-    //     fprintf(stderr,"=== Break ON in mb_motor_brake! ===\n");
-    //     rc_gpio_set_value(MOT_BRAKE_EN, 1);
-    // }else{
-    //     // Brake off!!
-    //     fprintf(stderr,"=== Break OFF in mb_motor_brake! ===\n");
-    //     rc_gpio_set_value(MOT_BRAKE_EN, 0);
-    // }
 
     rc_gpio_set_value(MOT_BRAKE_EN, brake_en);
     
@@ -150,6 +142,9 @@ int mb_motor_set(int motor, double duty){
         duty = -duty;
         direction = 1;
     }
+    if(duty > 1.0){
+        duty = 1.0;
+    }
 
     if(motor == 1){  
         rc_gpio_set_value(MDIR1_CHIP,MDIR1_PIN, direction);
@@ -188,7 +183,15 @@ int mb_motor_set_all(double duty){
 * returns the measured current in A
 *******************************************************************************/
 double mb_motor_read_current(int motor){
-    //DRV8801 driver board CS pin puts out 500mV/A
+    // DRV8801 driver board CS pin puts out 500mV/A
     // TODO:
-    return 0.0;
+    double pin_volt;
+
+    if(motor == 1){
+        pin_volt = rc_adc_read_volt(MOT_1_CS);
+    }elif(motor === 2){
+        pin_volt = rc_adc_read_volt(MOT_2_CS);
+    }
+
+    return pin_volt/0.5;
 }
