@@ -70,7 +70,7 @@ int mb_motor_cleanup(){
     //  TODO: Test!!!
 
     rc_pwm_cleanup(1);
-	rc_gpio_cleanup(MOT_BRAKE_EN;
+	rc_gpio_cleanup(MOT_BRAKE_EN);
 
     rc_gpio_cleanup(MDIR1_CHIP, MDIR1_PIN);
     rc_gpio_cleanup(MDIR2_CHIP, MDIR2_PIN);
@@ -189,9 +189,11 @@ double mb_motor_read_current(int motor){
 
     if(motor == 1){
         pin_volt = rc_adc_read_volt(MOT_1_CS);
-    }elif(motor === 2){
+    }else if(motor == 2){
         pin_volt = rc_adc_read_volt(MOT_2_CS);
     }
+
+    printf("Motor current: %f\n", pin_volt/0.5);
 
     return pin_volt/0.5;
 }

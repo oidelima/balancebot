@@ -21,8 +21,8 @@
 #define MOT_2_POL                   -1 // polarity of motor 2
 #define ENC_1_POL                   0 // polarity of encoder 1
 #define ENC_2_POL                   0 // polarity of encoder 2
-#define MOT_1_CS                    AIN0 // analog in of motor 1 current sense
-#define MOT_2_CS                    AIN1 // analog in of motor 2 current sense
+#define MOT_1_CS                    3 // analog in of motor 1 current sense
+#define MOT_2_CS                    4 // analog in of motor 2 current sense
 #define GEAR_RATIO                  20.4 // gear ratio of motor
 #define ENCODER_RES                 48 // encoder counts per motor shaft revolution
 #define WHEEL_DIAMETER              0.083 // diameter of wheel in meters
