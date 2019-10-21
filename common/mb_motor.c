@@ -37,7 +37,7 @@ int mb_motor_init(){
         rc_gpio_init(MDIR2_CHIP, MDIR2_PIN, GPIOHANDLE_REQUEST_OUTPUT);
 
         // Motor brake pin
-        rc_gpio_init(MOT_BRAKE_EN_PIN, GPIOHANDLE_REQUEST_OUTPUT);
+        rc_gpio_init(MOT_BRAKE_EN, GPIOHANDLE_REQUEST_OUTPUT);
 
         return 0;
     }
