@@ -63,13 +63,13 @@ int main(){
 		return -1;
 	}
 
-	printf("initializing xbee... \n");
-	//initalize XBee Radio
-	int baudrate = BAUDRATE;
-	if(XBEE_init(baudrate)==-1){
-		fprintf(stderr,"Error initializing XBee\n");
-		return -1;
-	};
+	// printf("initializing xbee... \n");
+	// //initalize XBee Radio
+	// int baudrate = BAUDRATE;
+	// if(XBEE_init(baudrate)==-1){
+	// 	fprintf(stderr,"Error initializing XBee\n");
+	// 	return -1;
+	// };
 
     // make PID file to indicate your project is running
 	// due to the check made on the call to rc_kill_existing_process() above
@@ -96,7 +96,7 @@ int main(){
 	// set up mpu configuration
 	rc_mpu_config_t mpu_config = rc_mpu_default_config();
 	mpu_config.dmp_sample_rate = SAMPLE_RATE_HZ;
-	mpu_config.orient = ORIENTATION_Z_UP;
+	mpu_config.orient = ORIENTATION_Z_DOWN;
 
 	// now set up the imu for dmp interrupt operation
 	if(rc_mpu_initialize_dmp(&mpu_data, mpu_config)){
@@ -168,8 +168,8 @@ void balancebot_controller(){
 	// Read IMU
 	mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X];
 	// Read encoders
-	mb_state.left_encoder = rc_encoder_eqep_read(1);
-	mb_state.right_encoder = rc_encoder_eqep_read(2);
+	mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(1);
+	mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(2);
     // Update odometry 
  
 
@@ -183,19 +183,20 @@ void balancebot_controller(){
     	//send motor commands
    	}
 
-	XBEE_getData();
-	double q_array[4] = {xbeeMsg.qw, xbeeMsg.qx, xbeeMsg.qy, xbeeMsg.qz};
-	double tb_array[3] = {0, 0, 0};
-	rc_quaternion_to_tb_array(q_array, tb_array);
-	mb_state.opti_x = xbeeMsg.x;
-	mb_state.opti_y = -xbeeMsg.y;	    //xBee quaternion is in Z-down, need Z-up
-	mb_state.opti_roll = tb_array[0];
-	mb_state.opti_pitch = -tb_array[1]; //xBee quaternion is in Z-down, need Z-up
-	mb_state.opti_yaw = -tb_array[2];   //xBee quaternion is in Z-down, need Z-up
+	// XBEE_getData();
+	// double q_array[4] = {xbeeMsg.qw, xbeeMsg.qx, xbeeMsg.qy, xbeeMsg.qz};
+	// double tb_array[3] = {0, 0, 0};
+	// rc_quaternion_to_tb_array(q_array, tb_array);
+	// mb_state.opti_x = xbeeMsg.x;
+	// mb_state.opti_y = -xbeeMsg.y;	    //xBee quaternion is in Z-down, need Z-up
+	// mb_state.opti_roll = tb_array[0];
+	// mb_state.opti_pitch = -tb_array[1]; //xBee quaternion is in Z-down, need Z-up
+	// mb_state.opti_yaw = -tb_array[2];   //xBee quaternion is in Z-down, need Z-up
 	
 	
    	//unlock state mutex
     pthread_mutex_unlock(&state_mutex);
+	//printf("Balance Bot Controller Running");
 
 }
 
