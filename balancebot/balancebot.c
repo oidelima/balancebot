@@ -86,6 +86,7 @@ int main(){
 	// set up D1 Theta controller
 	double D1_num[] = D1_NUM;
 	double D1_den[] = D1_DEN;
+									
 	if(rc_filter_alloc_from_arrays(&SLC_D1, DT, D1_num, D1_NUM_LEN, D1_den, D1_DEN_LEN)){
 			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			return -1;
@@ -94,7 +95,8 @@ int main(){
 	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
 	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
 
-
+	printf("Inner Loop controller SLC_D1:\n");
+	rc_filter_print(SLC_D1);
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
@@ -108,11 +110,11 @@ int main(){
 	rc_pthread_create(&setpoint_control_thread, setpoint_control_loop, (void*) NULL, SCHED_FIFO, 50);
 
 	// start battery_checker thread
-	printf("starting battery_checker thread... \n");
-	if(rc_pthread_create(&battery_thread, __battery_checker, (void*) NULL, SCHED_OTHER, 0)){
-                fprintf(stderr, "failed to start battery thread\n");
-                return -1;
-	}
+	// printf("starting battery_checker thread... \n");
+	// if(rc_pthread_create(&battery_thread, __battery_checker, (void*) NULL, SCHED_OTHER, 0)){
+    //             fprintf(stderr, "failed to start battery thread\n");
+    //             return -1;
+	// }
 
 
 	// TODO: start motion capture message recieve thread
@@ -188,58 +190,61 @@ int main(){
 *
 *******************************************************************************/
 void balancebot_controller(){
-
-	//lock state mutex
-	pthread_mutex_lock(&state_mutex);
-	// Read IMU
-	mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X] - BALANCE_OFFSET;
-	// Read encoders
-	mb_state.left_encoder = rc_encoder_eqep_read(1);
-	mb_state.right_encoder = rc_encoder_eqep_read(2);
-    // Update odometry 
- 
-
-    // Calculate controller outputs
-    if(!mb_setpoints.manual_ctl){
-		// Auto Mode
-    	//send motor commands
-
-   	}
-
-    if(mb_setpoints.manual_ctl){
-		// Manual Mode
-    	//send motor commands
-
-		/************************************************************
-        * INNER LOOP ANGLE Theta controller D1
-        * Input to D1 is theta error (setpoint-state). Then scale the
-        * output u to compensate for changing battery voltage.
-        *************************************************************/
-        D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
-        mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_setpoints.theta-mb_state.theta));
-
-
-		dutyL = mb_state.SLC_d1_u;
-        dutyR = mb_state.SLC_d1_u;
-        mb_motor_set(LEFT_MOTOR, dutyL);
-        mb_motor_set(RIGHT_MOTOR, dutyR);
-   	}
-
-
-	// XBEE_getData();
-	// double q_array[4] = {xbeeMsg.qw, xbeeMsg.qx, xbeeMsg.qy, xbeeMsg.qz};
-	// double tb_array[3] = {0, 0, 0};
-	// rc_quaternion_to_tb_array(q_array, tb_array);
-	// mb_state.opti_x = xbeeMsg.x;
-	// mb_state.opti_y = -xbeeMsg.y;	    //xBee quaternion is in Z-down, need Z-up
-	// mb_state.opti_roll = tb_array[0];
-	// mb_state.opti_pitch = -tb_array[1]; //xBee quaternion is in Z-down, need Z-up
-	// mb_state.opti_yaw = -tb_array[2];   //xBee quaternion is in Z-down, need Z-up
+	while(rc_get_state()!=EXITING){
+		//lock state mutex
+		pthread_mutex_lock(&state_mutex);
+		// Read IMU
+		mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X] - BALANCE_OFFSET;
+		// Read encoders
+		mb_state.left_encoder = rc_encoder_eqep_read(1);
+		mb_state.right_encoder = rc_encoder_eqep_read(2);
+		// Update odometry 
 	
-	
-   	//unlock state mutex
-    pthread_mutex_unlock(&state_mutex);
 
+		// Calculate controller outputs
+		if(!mb_setpoints.manual_ctl){
+			// Auto Mode
+			//send motor commands
+
+		}
+
+		if(mb_setpoints.manual_ctl){
+			// Manual Mode
+			//send motor commands
+
+			/************************************************************
+			* INNER LOOP ANGLE Theta controller D1
+			* Input to D1 is theta error (setpoint-state). Then scale the
+			* output u to compensate for changing battery voltage.
+			*************************************************************/
+			printf("In mannual control!! \n");
+
+			SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
+			mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_setpoints.theta-mb_state.theta));
+
+
+			double dutyL = mb_state.SLC_d1_u;
+			double dutyR = mb_state.SLC_d1_u;
+
+			mb_motor_set(LEFT_MOTOR, dutyL);
+			mb_motor_set(RIGHT_MOTOR, dutyR);
+		}
+
+
+		// XBEE_getData();
+		// double q_array[4] = {xbeeMsg.qw, xbeeMsg.qx, xbeeMsg.qy, xbeeMsg.qz};
+		// double tb_array[3] = {0, 0, 0};
+		// rc_quaternion_to_tb_array(q_array, tb_array);
+		// mb_state.opti_x = xbeeMsg.x;
+		// mb_state.opti_y = -xbeeMsg.y;	    //xBee quaternion is in Z-down, need Z-up
+		// mb_state.opti_roll = tb_array[0];
+		// mb_state.opti_pitch = -tb_array[1]; //xBee quaternion is in Z-down, need Z-up
+		// mb_state.opti_yaw = -tb_array[2];   //xBee quaternion is in Z-down, need Z-up
+		
+		
+		//unlock state mutex
+		pthread_mutex_unlock(&state_mutex);
+	}
 }
 
 
@@ -305,6 +310,7 @@ void* printf_loop(void* ptr){
 			printf("    X    |");
 			printf("    Y    |");
 			printf("    ψ    |");
+			printf("   D1_u  |");
 
 			printf("\n");
 		}
@@ -324,6 +330,7 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_state.opti_x);
 			printf("%7.3f  |", mb_state.opti_y);
 			printf("%7.3f  |", mb_state.opti_yaw);
+			printf("%7.3f  |", mb_state.SLC_d1_u);
 			pthread_mutex_unlock(&state_mutex);
 			fflush(stdout);
 		}
@@ -334,15 +341,15 @@ void* printf_loop(void* ptr){
 
 
 
-void* __battery_checker(void* ptr)
-{
-        double new_v;
-        while(rc_get_state()!=EXITING){
-                new_v = rc_adc_dc_jack();
-                // if the value doesn't make sense, use nominal voltage
-                if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
-                mb_state.vBattery = new_v;
-                rc_usleep(1000000 / BATTERY_CHECK_HZ);
-        }
-        return NULL;
-}
+// void* __battery_checker(void* ptr)
+// {
+//         double new_v;
+//         while(rc_get_state()!=EXITING){
+//                 new_v = rc_adc_dc_jack();
+//                 // if the value doesn't make sense, use nominal voltage
+//                 if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
+//                 mb_state.vBattery = new_v;
+//                 rc_usleep(1000000 / BATTERY_CHECK_HZ);
+//         }
+//         return NULL;
+// }

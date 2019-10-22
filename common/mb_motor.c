@@ -97,7 +97,7 @@ int mb_motor_disable(){
 int mb_motor_set(int motor, double duty){
     
     if(unlikely(!init_flag)){
-        fprintf(stderr,"ERROR: trying to rc_set_motor_all before they have been initialized\n");
+        fprintf(stderr,"ERROR: trying to rc_set_motor before they have been initialized\n");
         return -1;
     }
 
