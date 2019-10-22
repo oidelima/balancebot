@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <rc/mpu.h>
 #include <rc/math/quaternion.h>
+#include "../common/mb_settings.h"
 #include "../common/mb_defs.h"
 #include "../common/mb_structs.h"
 #include "../common/mb_motor.h"

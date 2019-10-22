@@ -20,7 +20,6 @@
 #include <rc/encoder_eqep.h>
 #include <rc/time.h>
 
-
 #include "balancebot.h"
 
 /*******************************************************************************
@@ -28,6 +27,17 @@
 *
 *******************************************************************************/
 int main(){
+
+	char* settings_file_path = NULL;
+	settings_file_path = "~/balancebot-f19/common/settings.json";
+
+	// first things first, load settings which may be used during startup
+	if(settings_load_from_file(settings_file_path)<0){
+		fprintf(stderr,"ERROR: failed to load settings\n");
+		return -1;
+	}
+	printf("Loaded settings: %s\n", settings.name);
+
 	// make sure another instance isn't running
     // if return value is -3 then a background process is running with
     // higher privaledges and we couldn't kill it, in which case we should
@@ -95,8 +105,8 @@ int main(){
 	printf("initializing imu... \n");
 	// set up mpu configuration
 	rc_mpu_config_t mpu_config = rc_mpu_default_config();
-	mpu_config.dmp_sample_rate = SAMPLE_RATE_HZ;
-	mpu_config.orient = ORIENTATION_Z_DOWN;
+	mpu_config.dmp_sample_rate = settings.mpu_sample_rate;
+	mpu_config.orient = settings.mpu_orientation;
 
 	// now set up the imu for dmp interrupt operation
 	if(rc_mpu_initialize_dmp(&mpu_data, mpu_config)){
