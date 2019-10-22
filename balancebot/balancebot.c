@@ -190,61 +190,59 @@ int main(){
 *
 *******************************************************************************/
 void balancebot_controller(){
-	while(rc_get_state()!=EXITING){
-		//lock state mutex
-		pthread_mutex_lock(&state_mutex);
-		// Read IMU
-		mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X] - BALANCE_OFFSET;
-		// Read encoders
-		mb_state.left_encoder = rc_encoder_eqep_read(1);
-		mb_state.right_encoder = rc_encoder_eqep_read(2);
-		// Update odometry 
-	
-
-		// Calculate controller outputs
-		if(!mb_setpoints.manual_ctl){
-			// Auto Mode
-			//send motor commands
-
-		}
-
-		if(mb_setpoints.manual_ctl){
-			// Manual Mode
-			//send motor commands
-
-			/************************************************************
-			* INNER LOOP ANGLE Theta controller D1
-			* Input to D1 is theta error (setpoint-state). Then scale the
-			* output u to compensate for changing battery voltage.
-			*************************************************************/
-			printf("In mannual control!! \n");
-
-			SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
-			mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_setpoints.theta-mb_state.theta));
+	//lock state mutex
+	pthread_mutex_lock(&state_mutex);
+	// Read IMU
+	mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X] - BALANCE_OFFSET;
+	// Read encoders
+	mb_state.left_encoder = rc_encoder_eqep_read(1);
+	mb_state.right_encoder = rc_encoder_eqep_read(2);
+	// Update odometry 
 
 
-			double dutyL = mb_state.SLC_d1_u;
-			double dutyR = mb_state.SLC_d1_u;
+	// Calculate controller outputs
+	if(!mb_setpoints.manual_ctl){
+		// Auto Mode
+		//send motor commands
 
-			mb_motor_set(LEFT_MOTOR, dutyL);
-			mb_motor_set(RIGHT_MOTOR, dutyR);
-		}
-
-
-		// XBEE_getData();
-		// double q_array[4] = {xbeeMsg.qw, xbeeMsg.qx, xbeeMsg.qy, xbeeMsg.qz};
-		// double tb_array[3] = {0, 0, 0};
-		// rc_quaternion_to_tb_array(q_array, tb_array);
-		// mb_state.opti_x = xbeeMsg.x;
-		// mb_state.opti_y = -xbeeMsg.y;	    //xBee quaternion is in Z-down, need Z-up
-		// mb_state.opti_roll = tb_array[0];
-		// mb_state.opti_pitch = -tb_array[1]; //xBee quaternion is in Z-down, need Z-up
-		// mb_state.opti_yaw = -tb_array[2];   //xBee quaternion is in Z-down, need Z-up
-		
-		
-		//unlock state mutex
-		pthread_mutex_unlock(&state_mutex);
 	}
+
+	if(mb_setpoints.manual_ctl){
+		// Manual Mode
+		//send motor commands
+
+		/************************************************************
+		* INNER LOOP ANGLE Theta controller D1
+		* Input to D1 is theta error (setpoint-state). Then scale the
+		* output u to compensate for changing battery voltage.
+		*************************************************************/
+		printf("In mannual control!! \n");
+
+		SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
+		mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_setpoints.theta-mb_state.theta));
+
+
+		double dutyL = mb_state.SLC_d1_u;
+		double dutyR = mb_state.SLC_d1_u;
+
+		mb_motor_set(LEFT_MOTOR, dutyL);
+		mb_motor_set(RIGHT_MOTOR, dutyR);
+	}
+
+
+	// XBEE_getData();
+	// double q_array[4] = {xbeeMsg.qw, xbeeMsg.qx, xbeeMsg.qy, xbeeMsg.qz};
+	// double tb_array[3] = {0, 0, 0};
+	// rc_quaternion_to_tb_array(q_array, tb_array);
+	// mb_state.opti_x = xbeeMsg.x;
+	// mb_state.opti_y = -xbeeMsg.y;	    //xBee quaternion is in Z-down, need Z-up
+	// mb_state.opti_roll = tb_array[0];
+	// mb_state.opti_pitch = -tb_array[1]; //xBee quaternion is in Z-down, need Z-up
+	// mb_state.opti_yaw = -tb_array[2];   //xBee quaternion is in Z-down, need Z-up
+	
+	
+	//unlock state mutex
+	pthread_mutex_unlock(&state_mutex);
 }
 
 
