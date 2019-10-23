@@ -48,34 +48,34 @@ int mb_controller_load_config(){
 
     printf("Parsed Config File as below - ");
 
-    while(fgets(line, 256, cfg) != NULL)
+    while(fgets(line, 256, file) != NULL)
     {
             float kp, ki, kd, tf;
-            char ctrl_name[128];
+            char ctrl_id;
             linenum++;
             if(line[0] == '#') continue;
 
-            if(sscanf(line, "%s %f %f %f %f", &ctrl_name, &kp, &ki, &kd, &tf) != 5)
+            if(sscanf(line, "%c %f %f %f %f", &ctrl_id, &kp, &ki, &kd, &tf) != 5)
             {
                     printf("Syntax error in line %d\n", linenum);
                     continue;
             }
 
-            switch(ctrl_name) {
+            switch(ctrl_id) {
 
-                case "Body_Angle:":
+                case 'B':
                     body_angle.kp = kp;
                     body_angle.ki = ki;
                     body_angle.kd = kd;
                     body_angle.tf = tf;
                     break;
-                case "Position:":
+                case 'P':
                     position.kp = kp;
                     position.ki = ki;
                     position.kd = kd;
                     position.tf = tf;
                     break;
-                case "Steering:":
+                case 'S':
                     steering.kp = kp;
                     steering.ki = ki;
                     steering.kd = kd;
