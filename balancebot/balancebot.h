@@ -13,7 +13,7 @@
 #include "../common/mb_defs.h"
 #include "../common/mb_structs.h"
 #include "../common/mb_motor.h"
-#include "../common/mb_controller.h"
+// #include "../common/mb_controller.h"
 #include "../common/mb_odometry.h"
 #include "../xbee_serial/xbee_receive.h"
 
@@ -21,7 +21,7 @@
 #define SOFT_START_TIME     0.1
 #define DT                  0.01
 #define V_NOMINAL           12
-#define BATTERY_CHECK_HZ    0.1
+#define BATTERY_CHECK_HZ    1
 
 // inner loop controller 100hz
 #define D1_GAIN			1
@@ -55,5 +55,6 @@ void balancebot_controller();
 //threads
 void* setpoint_control_loop(void* ptr);
 void* printf_loop(void* ptr);
+void* __battery_checker(void* ptr);
 
 #endif

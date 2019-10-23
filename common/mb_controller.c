@@ -19,7 +19,7 @@
 *******************************************************************************/
 
 int mb_controller_init(){
-    mb_controller_load_config();
+    // mb_controller_load_config();
     /* TODO initialize your controllers here*/
 
     return 0;
@@ -63,26 +63,26 @@ int mb_controller_load_config(){
 
             switch(ctrl_id) {
 
-                case 'B':
-                    body_angle.kp = kp;
-                    body_angle.ki = ki;
-                    body_angle.kd = kd;
-                    body_angle.tf = tf;
-                    break;
-                case 'P':
-                    position.kp = kp;
-                    position.ki = ki;
-                    position.kd = kd;
-                    position.tf = tf;
-                    break;
-                case 'S':
-                    steering.kp = kp;
-                    steering.ki = ki;
-                    steering.kd = kd;
-                    steering.tf = tf;
-                    break;
-                default:
-                    continue;
+                // case 'B':
+                //     body_angle.kp = kp;
+                //     body_angle.ki = ki;
+                //     body_angle.kd = kd;
+                //     body_angle.tf = tf;
+                //     break;
+                // case 'P':
+                //     position.kp = kp;
+                //     position.ki = ki;
+                //     position.kd = kd;
+                //     position.tf = tf;
+                //     break;
+                // case 'S':
+                //     steering.kp = kp;
+                //     steering.ki = ki;
+                //     steering.kd = kd;
+                //     steering.tf = tf;
+                //     break;
+                // default:
+                //     continue;
                     
             }
             
