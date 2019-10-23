@@ -82,19 +82,7 @@ int main(){
 
 	// TODO: start motion capture message recieve thread
 	// set up D1 Theta controller
-	double D1_num[] = D1_NUM;
-	double D1_den[] = D1_DEN;
-									
-	if(rc_filter_pid(&SLC_D1, KP, KI, KD, TF, DT)){
-			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
-			return -1;
-	}
-	SLC_D1.gain = D1_GAIN;
-	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
-	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
 
-	printf("Inner Loop controller SLC_D1:\n");
-	rc_filter_print(SLC_D1);
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
@@ -139,6 +127,17 @@ int main(){
 	//attach controller function to IMU interrupt
 	printf("initializing controller...\n");
 	mb_controller_init();
+									
+	if(rc_filter_pid(&SLC_D1, KP, KI, KD, TF, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D1.gain = D1_GAIN;
+	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
+	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
+
+	printf("Inner Loop controller SLC_D1:\n");
+	rc_filter_print(SLC_D1);
 
 	printf("initializing motors...\n");
 	mb_motor_init();

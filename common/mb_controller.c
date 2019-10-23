@@ -45,37 +45,46 @@ int mb_controller_load_config(){
 
     char line[300];
     int linenum=0;
+    float kp, ki, kd, tf;
+    char ctrl_id;
 
     printf("Parsed Config File as below - ");
 
-    while(fgets(line, 256, file) != NULL)
+    while(fgets(line, 300, file) != NULL)
     {
-            float kp, ki, kd, tf;
-            char ctrl_id;
+            kp = 0.0;
+            ki = 0.0;
+            kd = 0.0;
+            tf = 0.0;
+            ctrl_id = ' ';
+
             linenum++;
+            printf("Parsing Line %d", linenum);
             if(line[0] == '#') continue;
 
-            if(sscanf(line, "%c %f %f %f %f", &ctrl_id, &kp, &ki, &kd, &tf) != 5)
+            if(sscanf(line, "%f %f %f %f", &kp, &ki, &kd, &tf) != 4)
             {
                     printf("Syntax error in line %d\n", linenum);
                     continue;
             }
 
-            switch(ctrl_id) {
+            printf("Line %d:  Kp = %f Ki = %f Kd = %f Tf = %f\n", linenum, kp, ki, kd, tf);
 
-                case 'B':
+            switch(linenum) {
+
+                case 2:
                     body_angle.kp = kp;
                     body_angle.ki = ki;
                     body_angle.kd = kd;
                     body_angle.tf = tf;
                     break;
-                case 'P':
+                case 3:
                     position.kp = kp;
                     position.ki = ki;
                     position.kd = kd;
                     position.tf = tf;
                     break;
-                case 'S':
+                case 4:
                     steering.kp = kp;
                     steering.ki = ki;
                     steering.kd = kd;
@@ -86,7 +95,6 @@ int mb_controller_load_config(){
                     
             }
             
-            printf("Line %d:  Kp = %f Ki = %f Kd = %f Tf = %f\n", linenum, kp, ki, kd, tf);
     }
 
     fclose(file);

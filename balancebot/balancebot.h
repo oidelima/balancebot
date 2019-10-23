@@ -34,7 +34,7 @@
 
 #define KP              10.0
 #define KI              0.0
-#define KD              2.0
+#define KD              0.05
 #define TF              31.4
 
 
@@ -45,6 +45,9 @@ pthread_mutex_t setpoint_mutex;
 mb_state_t mb_state;
 mb_setpoints_t mb_setpoints;
 mb_odometry_t mb_odometry;
+ctrl_params_t body_angle;
+ctrl_params_t position;
+ctrl_params_t steering;
 
 xbee_packet_t xbeeMsg;
 int XBEE_portID;

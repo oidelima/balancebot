@@ -44,4 +44,12 @@ struct mb_odometry{
     float psi;      //orientation from initialization in rad
 };
 
+typedef struct ctrl_params ctrl_params_t;
+struct ctrl_params{
+    float kp;
+    float ki;
+    float kd;
+    float tf;
+};
+
 #endif
