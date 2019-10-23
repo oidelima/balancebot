@@ -20,9 +20,7 @@
 #include <rc/encoder_eqep.h>
 #include <rc/time.h>
 
-
 #include "balancebot.h"
-
 
 #include <rc/math.h>
 rc_filter_t SLC_D1 = RC_FILTER_INITIALIZER;
