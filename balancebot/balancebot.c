@@ -294,6 +294,7 @@ void* setpoint_control_loop(void* ptr){
 *******************************************************************************/
 void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
+
 	while(rc_get_state()!=EXITING){
 		new_state = rc_get_state();
 		// check if this is the first time since being paused
@@ -317,8 +318,17 @@ void* printf_loop(void* ptr){
 			printf("\nPAUSED\n");
 		}
 		last_state = new_state;
-		
+
+        //Logger init
+		char fileName[] = "log.csv";
+        int num_var = 9;
+        int row = 0;
+        double* M = (double*) malloc(num_var * sizeof(double));
+
 		if(new_state == RUNNING){
+
+
+
 			printf("\r");
 			//Add Print stattements here, do not follow with /n
 			pthread_mutex_lock(&state_mutex);
@@ -331,15 +341,59 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_state.opti_yaw);
 			printf("%7.3f  |", mb_state.SLC_d1_u);
 			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
+
+			//Logger
+			double readings[] = {mb_state.theta, mb_state.phi, mb_state.left_encoder, mb_state.right_encoder,
+			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.SLC_d1_u,
+			    mb_state.theta-mb_setpoints.theta};
+			M = realloc(M, num_var*(row+1)*sizeof(double));
+		    for (int col = 0; col < num_var; col++)
+        		*(M + row*num_var + col) = readings[col];
+		    row++;
+            writeMatrixToFile(fileName, M, row, num_var);
+
 			pthread_mutex_unlock(&state_mutex);
 			fflush(stdout);
 		}
 		rc_nanosleep(1E9/PRINTF_HZ);
+
+
 	}
 	return NULL;
 } 
 
 
+int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
+  FILE* fp = fopen(fileName, "w");
+  if (fp == NULL) {
+	return 1;
+  }
+
+  char * headers[] = {"Theta", "Phi", "Left encoder", "Right encoder", "X", "Y", "Psi", "D1_U", "Error_u"};
+
+  //Printing headers to csv
+  for (int j = 0; j < width; j++){
+        if (j > 0) {
+    	fputc(',', fp);
+  	}
+	fprintf (fp, "%s", headers[j]);
+	}
+  fputs("\r\n", fp);
+
+
+  //Printing values to csv
+  for (int i = 0; i < height; i++) {
+	for (int j = 0; j < width; j++) {
+  	if (j > 0) {
+    	fputc(',', fp);
+  	}
+  	fprintf(fp, "%lf", matrix[i*width +j]);
+	}
+	fputs("\r\n", fp);
+  }
+  fclose(fp);
+  return 0;
+}
 
 // void* __battery_checker(void* ptr)
 // {
