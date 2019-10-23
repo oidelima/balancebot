@@ -8,6 +8,10 @@
 #include "mb_controller.h"
 #include "mb_defs.h"
 
+ctrl_params_t body_angle;
+ctrl_params_t position;
+ctrl_params_t steering;
+
 /*******************************************************************************
 * int mb_controller_init()
 *
@@ -59,32 +63,31 @@ int mb_controller_load_config(){
             ctrl_id = ' ';
 
             linenum++;
-            printf("Parsing Line %d", linenum);
             if(line[0] == '#') continue;
 
-            if(sscanf(line, "%f %f %f %f", &kp, &ki, &kd, &tf) != 4)
+            if(sscanf(line, "%c %f %f %f %f", &ctrl_id, &kp, &ki, &kd, &tf) != 5)
             {
                     printf("Syntax error in line %d\n", linenum);
                     continue;
             }
 
-            printf("Line %d:  Kp = %f Ki = %f Kd = %f Tf = %f\n", linenum, kp, ki, kd, tf);
+            printf("Controller %c:  Kp = %f Ki = %f Kd = %f Tf = %f\n", ctrl_id, kp, ki, kd, tf);
 
-            switch(linenum) {
+            switch(ctrl_id) {
 
-                case 2:
+                case 'B':
                     body_angle.kp = kp;
                     body_angle.ki = ki;
                     body_angle.kd = kd;
                     body_angle.tf = tf;
                     break;
-                case 3:
+                case 'P':
                     position.kp = kp;
                     position.ki = ki;
                     position.kd = kd;
                     position.tf = tf;
                     break;
-                case 4:
+                case 'S':
                     steering.kp = kp;
                     steering.ki = ki;
                     steering.kd = kd;

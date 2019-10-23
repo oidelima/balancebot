@@ -45,9 +45,11 @@ pthread_mutex_t setpoint_mutex;
 mb_state_t mb_state;
 mb_setpoints_t mb_setpoints;
 mb_odometry_t mb_odometry;
-ctrl_params_t body_angle;
-ctrl_params_t position;
-ctrl_params_t steering;
+
+// definitions in mb_controller.h to parse controller gains
+extern ctrl_params_t body_angle;
+extern ctrl_params_t position;
+extern ctrl_params_t steering;
 
 xbee_packet_t xbeeMsg;
 int XBEE_portID;

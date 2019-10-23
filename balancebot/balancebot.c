@@ -128,7 +128,7 @@ int main(){
 	printf("initializing controller...\n");
 	mb_controller_init();
 									
-	if(rc_filter_pid(&SLC_D1, KP, KI, KD, TF, DT)){
+	if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
 			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			return -1;
 	}
