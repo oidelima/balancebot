@@ -32,6 +32,10 @@
 #define D1_DEN_LEN		3
 #define D1_SATURATION_TIMEOUT	0.4
 
+#define KP              10.0
+#define KI              0.0
+#define KD              2.0
+#define TF              31.4
 
 
 // global variables

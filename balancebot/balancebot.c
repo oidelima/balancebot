@@ -87,7 +87,7 @@ int main(){
 	double D1_num[] = D1_NUM;
 	double D1_den[] = D1_DEN;
 									
-	if(rc_filter_alloc_from_arrays(&SLC_D1, DT, D1_num, D1_NUM_LEN, D1_den, D1_DEN_LEN)){
+	if(rc_filter_pid(&SLC_D1, KP, KI, KD, TF, DT)){
 			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			return -1;
 	}
@@ -132,7 +132,7 @@ int main(){
 		return -1;
 	}
 
-	rc_nanosleep(5E9); // wait for imu to stabilize
+	rc_nanosleep(2E9); // wait for imu to stabilize
 
 	//initialize state mutex
     pthread_mutex_init(&state_mutex, NULL);
@@ -216,10 +216,10 @@ void balancebot_controller(){
 		* Input to D1 is theta error (setpoint-state). Then scale the
 		* output u to compensate for changing battery voltage.
 		*************************************************************/
-		printf("In mannual control!! \n");
+		// printf("In mannual control!! \n");
 
-		SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
-		mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_setpoints.theta-mb_state.theta));
+		// SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
+		mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_state.theta-mb_setpoints.theta));
 
 
 		double dutyL = mb_state.SLC_d1_u;
@@ -309,6 +309,7 @@ void* printf_loop(void* ptr){
 			printf("    Y    |");
 			printf("    ψ    |");
 			printf("   D1_u  |");
+			printf(" error_u |");
 
 			printf("\n");
 		}
@@ -329,6 +330,7 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_state.opti_y);
 			printf("%7.3f  |", mb_state.opti_yaw);
 			printf("%7.3f  |", mb_state.SLC_d1_u);
+			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
 			pthread_mutex_unlock(&state_mutex);
 			fflush(stdout);
 		}
