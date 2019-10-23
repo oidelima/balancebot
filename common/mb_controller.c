@@ -18,7 +18,6 @@
 *
 *******************************************************************************/
 
-
 int mb_controller_init(){
     mb_controller_load_config();
     /* TODO initialize your controllers here*/
@@ -41,10 +40,58 @@ int mb_controller_load_config(){
     FILE* file = fopen(CFG_PATH, "r");
     if (file == NULL){
         printf("Error opening %s\n", CFG_PATH );
+        return -1;
     }
-    /* TODO parse your config file here*/
+
+    char line[300];
+    int linenum=0;
+
+    printf("Parsed Config File as below - ");
+
+    while(fgets(line, 256, cfg) != NULL)
+    {
+            float kp, ki, kd, tf;
+            char ctrl_name[128];
+            linenum++;
+            if(line[0] == '#') continue;
+
+            if(sscanf(line, "%s %f %f %f %f", &ctrl_name, &kp, &ki, &kd, &tf) != 5)
+            {
+                    printf("Syntax error in line %d\n", linenum);
+                    continue;
+            }
+
+            switch(ctrl_name) {
+
+                case "Body_Angle:":
+                    body_angle.kp = kp;
+                    body_angle.ki = ki;
+                    body_angle.kd = kd;
+                    body_angle.tf = tf;
+                    break;
+                case "Position:":
+                    position.kp = kp;
+                    position.ki = ki;
+                    position.kd = kd;
+                    position.tf = tf;
+                    break;
+                case "Steering:":
+                    steering.kp = kp;
+                    steering.ki = ki;
+                    steering.kd = kd;
+                    steering.tf = tf;
+                    break;
+                default:
+                    continue;
+                    
+            }
+            
+            printf("Line %d:  Kp = %f Ki = %f Kd = %f Tf = %f\n", linenum, kp, ki, kd, tf);
+    }
+
     fclose(file);
     return 0;
+
 }
 
 /*******************************************************************************
