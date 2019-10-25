@@ -13,7 +13,7 @@
 #include "../common/mb_defs.h"
 #include "../common/mb_structs.h"
 #include "../common/mb_motor.h"
-// #include "../common/mb_controller.h"
+#include "../common/mb_controller.h"
 #include "../common/mb_odometry.h"
 #include "../xbee_serial/xbee_receive.h"
 
@@ -27,6 +27,7 @@
 // inner loop controller 100hz
 #define D1_GAIN			1
 #define D2_GAIN         1
+#define D3_GAIN         1
 #define D1_ORDER		2
 #define D1_NUM			{-4.595, 8.114, -3.562}
 #define D1_DEN			{ 1, -1.0695, 0.6949}
@@ -34,6 +35,9 @@
 #define D1_DEN_LEN		3
 #define D1_SATURATION_TIMEOUT	0.4
 
+extern ctrl_params_t body_angle;
+extern ctrl_params_t position;
+extern ctrl_params_t steering;
 
 // global variables
 rc_mpu_data_t mpu_data;

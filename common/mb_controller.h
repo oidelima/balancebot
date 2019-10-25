@@ -5,17 +5,9 @@
 #include "mb_structs.h"
 #define CFG_PATH "pid.cfg"
 
-typedef struct controller_params ctrl_params;
-struct controller_params{
-    float kp;
-    float ki;
-    float kd;
-    float tf;
-};
-
-extern ctrl_params body_angle;
-extern ctrl_params position;
-extern ctrl_params steering;
+extern ctrl_params_t body_angle;
+extern ctrl_params_t position;
+extern ctrl_params_t steering;
 
 int mb_controller_init();
 int mb_controller_load_config();

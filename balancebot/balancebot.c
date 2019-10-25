@@ -23,8 +23,9 @@
 #include "balancebot.h"
 
 #include <rc/math.h>
-rc_filter_t SLC_D1 = RC_FILTER_INITIALIZER;
-xrc_filter_t SLC_D2 = RC_FILTER_INITIALIZER;
+rc_filter_t SLC_D1 = RC_FILTER_INITIALIZER;  //body angle controller
+rc_filter_t SLC_D2 = RC_FILTER_INITIALIZER;  //position controller 
+rc_filter_t SLC_D3 = RC_FILTER_INITIALIZER;	 //steering controller
 
 /*******************************************************************************
 * int main() 
@@ -80,23 +81,6 @@ int main(){
 	// make our own safely.
 	rc_make_pid_file();
 
-
-	// TODO: start motion capture message recieve thread
-	// set up D1 Theta controller
-	double D1_num[] = D1_NUM;
-	double D1_den[] = D1_DEN;
-									
-	if(rc_filter_pid(&SLC_D1, KP, KI, KD, TF, DT)){
-			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
-			return -1;
-	}
-	SLC_D1.gain = D1_GAIN;
-	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
-	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
-
-	printf("Inner Loop controller SLC_D1:\n");
-	rc_filter_print(SLC_D1);
-
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
 	printf("starting print thread... \n");
@@ -115,7 +99,6 @@ int main(){
                 fprintf(stderr, "failed to start battery thread\n");
                 return -1;
 	}
-
 
 	// TODO: start motion capture message recieve thread
 
@@ -150,22 +133,34 @@ int main(){
 	SLC_D1.gain = D1_GAIN;
 	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
 	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
-
-	mb_controller_init();
 									
 	if(rc_filter_pid(&SLC_D2, position.kp, position.ki, position.kd, position.tf, DT)){
 			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			return -1;
 	}
 	SLC_D2.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2, -1.2, 1.2); 			//need to find the limits for theta
+	rc_filter_enable_saturation(&SLC_D2, -0.52, 0.52); 			//need to find the limits for theta - now +/- 30 deg
 	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
+
+	if(rc_filter_pid(&SLC_D3, steering.kp, steering.ki, steering.kd, steering.tf, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D3.gain = D3_GAIN;
+	rc_filter_enable_saturation(&SLC_D3, -1.0, 1.0); 			
+	rc_filter_enable_soft_start(&SLC_D3, SOFT_START_TIME/DT);
+
+	printf("Setting brakes ON!");
+	mb_motor_brake(1);
 
 	printf("Inner Loop controller SLC_D1:\n");
 	rc_filter_print(SLC_D1);
 
 	printf("Outer Loop position controller SLC_D2:\n");
 	rc_filter_print(SLC_D2);
+	
+	printf("Steering controller SLC_D3:\n");
+	rc_filter_print(SLC_D3);
 
 	printf("initializing motors...\n");
 	mb_motor_init();
@@ -197,6 +192,7 @@ int main(){
 	// exit cleanly
 	rc_filter_free(&SLC_D1);
 	rc_filter_free(&SLC_D2);
+	rc_filter_free(&SLC_D3);
 	rc_mpu_power_off();
 	mb_motor_cleanup();
 	rc_led_cleanup();
@@ -266,8 +262,6 @@ void balancebot_controller(){
 		}   
         else mb_setpoints.theta = 0.0;
 
-
-
 		/************************************************************
 		* INNER LOOP ANGLE Theta controller D1
 		* Input to D1 is theta error (setpoint-state). Then scale the
@@ -277,12 +271,18 @@ void balancebot_controller(){
 		// SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
 		mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_state.theta-mb_setpoints.theta));
 
+		/**********************************************************
+        * Steering controller D3
+        * move the setpoint gamma based on user input like phi
+        ***********************************************************/
+        if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT;
+        mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
 
-		double dutyL = mb_state.SLC_d1_u;
-		double dutyR = mb_state.SLC_d1_u;
+		mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
+		mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
 
-		mb_motor_set(LEFT_MOTOR, dutyL);
-		mb_motor_set(RIGHT_MOTOR, dutyR);
+		mb_motor_set(LEFT_MOTOR, mb_state.dutyL);
+		mb_motor_set(RIGHT_MOTOR, mb_state.dutyR);
 	}
 
 
@@ -296,11 +296,10 @@ void balancebot_controller(){
 	// mb_state.opti_pitch = -tb_array[1]; //xBee quaternion is in Z-down, need Z-up
 	// mb_state.opti_yaw = -tb_array[2];   //xBee quaternion is in Z-down, need Z-up
 	
-	
-	//unlock state mutex
-	pthread_mutex_unlock(&state_mutex);
 	// unlock setpoint mutex
 	pthread_mutex_unlock(&setpoint_mutex);
+	//unlock state mutex
+	pthread_mutex_unlock(&state_mutex);
 }
 
 
@@ -354,7 +353,7 @@ void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
 	
 	int row = 0;
-	int num_var = 14;
+	int num_var = 19;
 	double* M = (double*) malloc(num_var * sizeof(double));
 
 	while(rc_get_state()!=EXITING){
@@ -362,10 +361,11 @@ void* printf_loop(void* ptr){
 		// check if this is the first time since being paused
 		if(new_state==RUNNING && last_state!=RUNNING){
 			printf("\nRUNNING: Hold upright to balance.\n");
-			printf("                 SENSORS               |            MOCAP            |");
+			printf("                 SENSORS               										//|            MOCAP            |//");
 			printf("\n");
 			printf("    θ    |");
 			printf("    φ    |");
+			printf("    ψ    |");
 			printf("  L Enc  |");
 			printf("  R Enc  |");
 			printf("  L phi  |");
@@ -373,12 +373,15 @@ void* printf_loop(void* ptr){
 			printf("    X    |");
 			printf("    Y    |");
 			printf("    ψ    |");
-
 			printf("   D1_u  |");
 			printf("  err_θ  |");
 			printf("   D2_u  |");
 			printf("  err_φ  |");
 			printf("  θ_set  |");
+			printf("   D3_u  |");
+			printf("  err_ψ  |");
+			printf(" duty_L  |");
+			printf(" duty_R  |");
 
 			printf("\n");
 		}
@@ -397,6 +400,7 @@ void* printf_loop(void* ptr){
 			pthread_mutex_lock(&state_mutex);
 			printf("%7.3f  |", mb_state.theta);
 			printf("%7.3f  |", mb_state.phi);
+			printf("%7.3f  |", mb_odometry.psi);
 			printf("%7d  |", mb_state.left_encoder);
 			printf("%7d  |", mb_state.right_encoder);
 			printf("%7.3f  |", mb_state.left_w_angle);
@@ -409,12 +413,17 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_state.SLC_d2_u);
 			printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
 			printf("%7.3f  |", mb_setpoints.theta);
+			printf("%7.3f  |", mb_state.SLC_d3_u);
+			printf("%7.3f  |", -(mb_odometry.psi-mb_setpoints.psi));
+			printf("%7.3f  |", mb_state.dutyL);
+			printf("%7.3f  |", mb_state.dutyR);
+
 
 			
 			//Logger
-			double readings[] = {mb_state.theta, mb_state.phi, mb_state.left_encoder, mb_state.right_encoder,mb_state.left_w_angle,mb_state.right_w_angle,
-			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.SLC_d1_u,
-			    mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), mb_setpoints.theta};
+			double readings[] = {mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder,mb_state.left_w_angle,mb_state.right_w_angle,
+			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.SLC_d1_u, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
+				mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR};
 			M = realloc(M, num_var*(row+1)*sizeof(double));
 		    for (int col = 0; col < num_var; col++)
         		*(M + row*num_var + col) = readings[col];
@@ -450,7 +459,7 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
 	return 1;
   }
 
-  char * headers[] = {"Theta", "Phi", "Left encoder", "Right encoder"," L phi ", " R phi ", "X", "Y", "Psi", "D1_U", "Error_u","D2_u", "err_φ", "θ_set"};
+  char * headers[] = {"Theta", "Phi", "Psi" "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "D1_U", "Error_u","D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R" };
 
 
   //Printing headers to csv

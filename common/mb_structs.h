@@ -13,8 +13,8 @@ struct mb_state{
     float   gyro_z;
 
     //outputs
-    float   left_cmd;  //left wheel command [-1..1]
-    float   right_cmd; //right wheel command [-1..1]
+    float  dutyL;  //left wheel command [-1..1]
+    float  dutyR; //right wheel command [-1..1]
 
     float opti_x;
     float opti_y;
@@ -30,8 +30,7 @@ struct mb_state{
 
     float SLC_d1_u;
     float SLC_d2_u;
-
-   
+    float SLC_d3_u;
     
 };
 
@@ -55,6 +54,14 @@ struct mb_odometry{
 
     int last_left_encoder;      // last left encoder reading
     int last_right_encoder;     // last right encoder reading
+};
+
+typedef struct ctrl_params ctrl_params_t;
+struct ctrl_params{
+    float kp;
+    float ki;
+    float kd;
+    float tf;
 };
 
 #endif
