@@ -13,7 +13,7 @@
 #include "../common/mb_defs.h"
 #include "../common/mb_structs.h"
 #include "../common/mb_motor.h"
-#include "../common/mb_controller.h"
+// #include "../common/mb_controller.h"
 #include "../common/mb_odometry.h"
 #include "../xbee_serial/xbee_receive.h"
 
@@ -42,11 +42,6 @@ pthread_mutex_t setpoint_mutex;
 mb_state_t mb_state;
 mb_setpoints_t mb_setpoints;
 mb_odometry_t mb_odometry;
-
-// definitions in mb_controller.h to parse controller gains
-extern ctrl_params_t body_angle;
-extern ctrl_params_t position;
-extern ctrl_params_t steering;
 
 xbee_packet_t xbeeMsg;
 int XBEE_portID;

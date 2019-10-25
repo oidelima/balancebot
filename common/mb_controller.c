@@ -8,10 +8,6 @@
 #include "mb_controller.h"
 #include "mb_defs.h"
 
-ctrl_params_t body_angle;
-ctrl_params_t position;
-ctrl_params_t steering;
-
 /*******************************************************************************
 * int mb_controller_init()
 *
@@ -23,7 +19,7 @@ ctrl_params_t steering;
 *******************************************************************************/
 
 int mb_controller_init(){
-    mb_controller_load_config();
+    // mb_controller_load_config();
     /* TODO initialize your controllers here*/
 
     return 0;
@@ -49,19 +45,13 @@ int mb_controller_load_config(){
 
     char line[300];
     int linenum=0;
-    float kp, ki, kd, tf;
-    char ctrl_id;
 
     printf("Parsed Config File as below - ");
 
-    while(fgets(line, 300, file) != NULL)
+    while(fgets(line, 256, file) != NULL)
     {
-            kp = 0.0;
-            ki = 0.0;
-            kd = 0.0;
-            tf = 0.0;
-            ctrl_id = ' ';
-
+            float kp, ki, kd, tf;
+            char ctrl_id;
             linenum++;
             if(line[0] == '#') continue;
 
@@ -71,33 +61,32 @@ int mb_controller_load_config(){
                     continue;
             }
 
-            printf("Controller %c:  Kp = %f Ki = %f Kd = %f Tf = %f\n", ctrl_id, kp, ki, kd, tf);
-
             switch(ctrl_id) {
 
-                case 'B':
-                    body_angle.kp = kp;
-                    body_angle.ki = ki;
-                    body_angle.kd = kd;
-                    body_angle.tf = tf;
-                    break;
-                case 'P':
-                    position.kp = kp;
-                    position.ki = ki;
-                    position.kd = kd;
-                    position.tf = tf;
-                    break;
-                case 'S':
-                    steering.kp = kp;
-                    steering.ki = ki;
-                    steering.kd = kd;
-                    steering.tf = tf;
-                    break;
-                default:
-                    continue;
+                // case 'B':
+                //     body_angle.kp = kp;
+                //     body_angle.ki = ki;
+                //     body_angle.kd = kd;
+                //     body_angle.tf = tf;
+                //     break;
+                // case 'P':
+                //     position.kp = kp;
+                //     position.ki = ki;
+                //     position.kd = kd;
+                //     position.tf = tf;
+                //     break;
+                // case 'S':
+                //     steering.kp = kp;
+                //     steering.ki = ki;
+                //     steering.kd = kd;
+                //     steering.tf = tf;
+                //     break;
+                // default:
+                //     continue;
                     
             }
             
+            printf("Line %d:  Kp = %f Ki = %f Kd = %f Tf = %f\n", linenum, kp, ki, kd, tf);
     }
 
     fclose(file);

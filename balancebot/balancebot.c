@@ -83,7 +83,19 @@ int main(){
 
 	// TODO: start motion capture message recieve thread
 	// set up D1 Theta controller
+	double D1_num[] = D1_NUM;
+	double D1_den[] = D1_DEN;
+									
+	if(rc_filter_pid(&SLC_D1, KP, KI, KD, TF, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D1.gain = D1_GAIN;
+	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
+	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
 
+	printf("Inner Loop controller SLC_D1:\n");
+	rc_filter_print(SLC_D1);
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
@@ -97,11 +109,12 @@ int main(){
 	rc_pthread_create(&setpoint_control_thread, setpoint_control_loop, (void*) NULL, SCHED_FIFO, 50);
 
 	// start battery_checker thread
-	// printf("starting battery_checker thread... \n");
-	// if(rc_pthread_create(&battery_thread, __battery_checker, (void*) NULL, SCHED_OTHER, 0)){
-    //             fprintf(stderr, "failed to start battery thread\n");
-    //             return -1;
-	// }
+	printf("starting battery_checker thread... \n");
+	pthread_t battery_thread;
+	if(rc_pthread_create(&battery_thread, __battery_checker, (void*) NULL, SCHED_OTHER, 0)){
+                fprintf(stderr, "failed to start battery thread\n");
+                return -1;
+	}
 
 
 	// TODO: start motion capture message recieve thread
@@ -112,6 +125,7 @@ int main(){
 	rc_mpu_config_t mpu_config = rc_mpu_default_config();
 	mpu_config.dmp_sample_rate = SAMPLE_RATE_HZ;
 	mpu_config.orient = ORIENTATION_Z_DOWN;
+	mpu_config.dmp_fetch_accel_gyro=1;
 
 	// now set up the imu for dmp interrupt operation
 	if(rc_mpu_initialize_dmp(&mpu_data, mpu_config)){
@@ -209,9 +223,11 @@ void balancebot_controller(){
 
 	// Read IMU
 	mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X] - BALANCE_OFFSET;
+	mb_state.gyro_z = mpu_data.gyro[2]*M_PI/180.0;
+
 	// Read encoders
-	mb_state.left_encoder = rc_encoder_eqep_read(2);
-	mb_state.right_encoder = rc_encoder_eqep_read(1);
+	mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(2);
+	mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(1);
 
 	// collect encoder positions, right wheel is reversed
 	mb_state.right_w_angle = (rc_encoder_eqep_read(1) * 2.0 * M_PI) \
@@ -222,7 +238,7 @@ void balancebot_controller(){
 	mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
 	
 	// Update odometry 
-
+	mb_odometry_update(&mb_odometry, &mb_state);
 
 	// Calculate controller outputs
 	if(!mb_setpoints.manual_ctl){
@@ -356,6 +372,7 @@ void* printf_loop(void* ptr){
 			printf("    X    |");
 			printf("    Y    |");
 			printf("    ψ    |");
+
 			printf("   D1_u  |");
 			printf("  err_θ  |");
 			printf("   D2_u  |");
@@ -403,6 +420,18 @@ void* printf_loop(void* ptr){
 		    row++;
             writeMatrixToFile(fileName, M, row, num_var);
 
+			// printf("%7.3f  |", mb_state.opti_x);
+			// printf("%7.3f  |", mb_state.opti_y);
+			// printf("%7.3f  |", mb_state.opti_yaw);
+
+			// printf("%7.3f  |", mb_odometry.x);
+			// printf("%7.3f  |", mb_odometry.y);
+			// printf("%7.3f  |", mb_odometry.psi*180/M_PI);
+
+
+			// printf("%7.3f  |", mb_state.SLC_d1_u);
+			// printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
+			// printf("%7.3f  |", mb_state.vBattery);
 			pthread_mutex_unlock(&state_mutex);
 			fflush(stdout);
 		}
@@ -473,11 +502,10 @@ void* __battery_checker(void* ptr)
 {
         double new_v;
         while(rc_get_state()!=EXITING){
-                new_v = rc_adc_dc_jack();
+                new_v = rc_adc_batt();
                 // if the value doesn't make sense, use nominal voltage
-                if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
+                // if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
                 mb_state.vBattery = new_v;
-
                 rc_usleep(1000000 / BATTERY_CHECK_HZ);
         }
         return NULL;

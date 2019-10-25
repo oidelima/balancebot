@@ -10,6 +10,8 @@ struct mb_state{
     int     left_encoder;      // left encoder counts since last reading
     int     right_encoder;     // right encoder counts since last reading
 
+    float   gyro_z;
+
     //outputs
     float   left_cmd;  //left wheel command [-1..1]
     float   right_cmd; //right wheel command [-1..1]
@@ -50,14 +52,9 @@ struct mb_odometry{
     float x;        //x position from initialization in m
     float y;        //y position from initialization in m
     float psi;      //orientation from initialization in rad
-};
 
-typedef struct ctrl_params ctrl_params_t;
-struct ctrl_params{
-    float kp;
-    float ki;
-    float kd;
-    float tf;
+    int last_left_encoder;      // last left encoder reading
+    int last_right_encoder;     // last right encoder reading
 };
 
 #endif
