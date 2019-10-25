@@ -21,21 +21,18 @@
 #define SOFT_START_TIME     0.1
 #define DT                  0.01
 #define V_NOMINAL           12
-#define BATTERY_CHECK_HZ    0.1
+#define BATTERY_CHECK_HZ    100
+#define POSITION_HOLD       1
 
 // inner loop controller 100hz
 #define D1_GAIN			1
+#define D2_GAIN         1
 #define D1_ORDER		2
 #define D1_NUM			{-4.595, 8.114, -3.562}
 #define D1_DEN			{ 1, -1.0695, 0.6949}
 #define D1_NUM_LEN		3
 #define D1_DEN_LEN		3
 #define D1_SATURATION_TIMEOUT	0.4
-
-#define KP              10.0
-#define KI              0.0
-#define KD              0.05
-#define TF              31.4
 
 
 // global variables
@@ -60,5 +57,9 @@ void balancebot_controller();
 //threads
 void* setpoint_control_loop(void* ptr);
 void* printf_loop(void* ptr);
+int writeMatrixToFile(char* fileName, double* matrix, int height, int width);
+static int __arm_controller(void);
+static int __zero_out_controller(void);
+void* __battery_checker(void* ptr);
 
 #endif

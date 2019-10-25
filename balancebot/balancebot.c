@@ -24,6 +24,7 @@
 
 #include <rc/math.h>
 rc_filter_t SLC_D1 = RC_FILTER_INITIALIZER;
+xrc_filter_t SLC_D2 = RC_FILTER_INITIALIZER;
 
 /*******************************************************************************
 * int main() 
@@ -125,7 +126,7 @@ int main(){
     pthread_mutex_init(&setpoint_mutex, NULL);
 
 	//attach controller function to IMU interrupt
-	printf("initializing controller...\n");
+	printf("initializing controllers...\n");
 	mb_controller_init();
 									
 	if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
@@ -136,8 +137,21 @@ int main(){
 	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
 	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
 
+	mb_controller_init();
+									
+	if(rc_filter_pid(&SLC_D2, position.kp, position.ki, position.kd, position.tf, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D2.gain = D2_GAIN;
+	rc_filter_enable_saturation(&SLC_D2, -1.2, 1.2); 			//need to find the limits for theta
+	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
+
 	printf("Inner Loop controller SLC_D1:\n");
 	rc_filter_print(SLC_D1);
+
+	printf("Outer Loop position controller SLC_D2:\n");
+	rc_filter_print(SLC_D2);
 
 	printf("initializing motors...\n");
 	mb_motor_init();
@@ -167,6 +181,8 @@ int main(){
 	}
 	
 	// exit cleanly
+	rc_filter_free(&SLC_D1);
+	rc_filter_free(&SLC_D2);
 	rc_mpu_power_off();
 	mb_motor_cleanup();
 	rc_led_cleanup();
@@ -187,13 +203,24 @@ int main(){
 *
 *******************************************************************************/
 void balancebot_controller(){
-	//lock state mutex
+	//lock state and setpoint mutex
 	pthread_mutex_lock(&state_mutex);
+	pthread_mutex_lock(&setpoint_mutex);
+
 	// Read IMU
 	mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X] - BALANCE_OFFSET;
 	// Read encoders
-	mb_state.left_encoder = rc_encoder_eqep_read(1);
-	mb_state.right_encoder = rc_encoder_eqep_read(2);
+	mb_state.left_encoder = rc_encoder_eqep_read(2);
+	mb_state.right_encoder = rc_encoder_eqep_read(1);
+
+	// collect encoder positions, right wheel is reversed
+	mb_state.right_w_angle = (rc_encoder_eqep_read(1) * 2.0 * M_PI) \
+							/(ENC_1_POL * GEAR_RATIO * ENCODER_RES);
+	mb_state.left_w_angle = (rc_encoder_eqep_read(2) * 2.0 * M_PI) \
+							/(ENC_2_POL * GEAR_RATIO * ENCODER_RES);
+
+	mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
+	
 	// Update odometry 
 
 
@@ -209,11 +236,26 @@ void balancebot_controller(){
 		//send motor commands
 
 		/************************************************************
+        * OUTER LOOP PHI controller D2
+        * Move the position setpoint based on phi_dot.
+        * Input to the controller is phi error (setpoint-state).
+        *************************************************************/
+        
+		if(POSITION_HOLD){
+			if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
+		
+			mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,mb_state.phi-mb_setpoints.phi);
+			mb_setpoints.theta = mb_state.SLC_d2_u;
+		}   
+        else mb_setpoints.theta = 0.0;
+
+
+
+		/************************************************************
 		* INNER LOOP ANGLE Theta controller D1
 		* Input to D1 is theta error (setpoint-state). Then scale the
 		* output u to compensate for changing battery voltage.
 		*************************************************************/
-		// printf("In mannual control!! \n");
 
 		// SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
 		mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_state.theta-mb_setpoints.theta));
@@ -240,6 +282,8 @@ void balancebot_controller(){
 	
 	//unlock state mutex
 	pthread_mutex_unlock(&state_mutex);
+	// unlock setpoint mutex
+	pthread_mutex_unlock(&setpoint_mutex);
 }
 
 
@@ -255,12 +299,12 @@ void* setpoint_control_loop(void* ptr){
 	pthread_mutex_lock(&setpoint_mutex);
 
 	// setpoints [0 0 0] (theta, phi, psi) for test
-	mb_setpoints.theta = 0;
+	// mb_setpoints.theta = 0;
 	mb_setpoints.phi = 0;
 	mb_setpoints.psi = 0;
 
-	// mb_setpoints.fwd_velocity = 0;
-	// mb_setpoints.turn_velocity = 0;
+	mb_setpoints.fwd_velocity = 0;
+	mb_setpoints.turn_velocity = 0;
 	mb_setpoints.manual_ctl = 1;
 
 	// unlock setpoint mutex
@@ -291,6 +335,10 @@ void* setpoint_control_loop(void* ptr){
 *******************************************************************************/
 void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
+	
+	int row = 0;
+	int num_var = 14;
+	double* M = (double*) malloc(num_var * sizeof(double));
 
 	while(rc_get_state()!=EXITING){
 		new_state = rc_get_state();
@@ -303,11 +351,16 @@ void* printf_loop(void* ptr){
 			printf("    φ    |");
 			printf("  L Enc  |");
 			printf("  R Enc  |");
+			printf("  L phi  |");
+			printf("  R phi  |");
 			printf("    X    |");
 			printf("    Y    |");
 			printf("    ψ    |");
 			printf("   D1_u  |");
-			printf(" error_u |");
+			printf("  err_θ  |");
+			printf("   D2_u  |");
+			printf("  err_φ  |");
+			printf("  θ_set  |");
 
 			printf("\n");
 		}
@@ -318,13 +371,8 @@ void* printf_loop(void* ptr){
 
         //Logger init
 		char fileName[] = "log.csv";
-        int num_var = 9;
-        int row = 0;
-        double* M = (double*) malloc(num_var * sizeof(double));
 
 		if(new_state == RUNNING){
-
-
 
 			printf("\r");
 			//Add Print stattements here, do not follow with /n
@@ -333,16 +381,22 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_state.phi);
 			printf("%7d  |", mb_state.left_encoder);
 			printf("%7d  |", mb_state.right_encoder);
+			printf("%7.3f  |", mb_state.left_w_angle);
+			printf("%7.3f  |", mb_state.right_w_angle);
 			printf("%7.3f  |", mb_state.opti_x);
 			printf("%7.3f  |", mb_state.opti_y);
 			printf("%7.3f  |", mb_state.opti_yaw);
 			printf("%7.3f  |", mb_state.SLC_d1_u);
 			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
+			printf("%7.3f  |", mb_state.SLC_d2_u);
+			printf("%7.3f  |", mb_state.phi-mb_setpoints.phi);
+			printf("%7.3f  |", mb_setpoints.theta);
 
+			
 			//Logger
-			double readings[] = {mb_state.theta, mb_state.phi, mb_state.left_encoder, mb_state.right_encoder,
+			double readings[] = {mb_state.theta, mb_state.phi, mb_state.left_encoder, mb_state.right_encoder,mb_state.left_w_angle,mb_state.right_w_angle,
 			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.SLC_d1_u,
-			    mb_state.theta-mb_setpoints.theta};
+			    mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, mb_state.phi-mb_setpoints.phi,mb_setpoints.theta };
 			M = realloc(M, num_var*(row+1)*sizeof(double));
 		    for (int col = 0; col < num_var; col++)
         		*(M + row*num_var + col) = readings[col];
@@ -366,7 +420,8 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
 	return 1;
   }
 
-  char * headers[] = {"Theta", "Phi", "Left encoder", "Right encoder", "X", "Y", "Psi", "D1_U", "Error_u"};
+  char * headers[] = {"Theta", "Phi", "Left encoder", "Right encoder"," L phi ", " R phi ", "X", "Y", "Psi", "D1_U", "Error_u","D2_u", "err_φ", "θ_set"};
+
 
   //Printing headers to csv
   for (int j = 0; j < width; j++){
@@ -392,15 +447,38 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
   return 0;
 }
 
-// void* __battery_checker(void* ptr)
-// {
-//         double new_v;
-//         while(rc_get_state()!=EXITING){
-//                 new_v = rc_adc_dc_jack();
-//                 // if the value doesn't make sense, use nominal voltage
-//                 if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
-//                 mb_state.vBattery = new_v;
-//                 rc_usleep(1000000 / BATTERY_CHECK_HZ);
-//         }
-//         return NULL;
-// }
+static int __arm_controller(void)
+{
+        __zero_out_controller();
+        rc_encoder_eqep_write(1,0);
+        rc_encoder_eqep_write(2,0);
+        // prefill_filter_inputs(&D1,cstate.theta);
+        mb_setpoints.manual_ctl = 1;
+        return 0;
+}
+
+static int __zero_out_controller(void)
+{
+        rc_filter_reset(&SLC_D1);
+        rc_filter_reset(&SLC_D2);
+        //rc_filter_reset(&D3);
+        // setpoint.theta = 0.0;
+        // setpoint.phi   = 0.0;
+        // setpoint.gamma = 0.0;
+        // rc_motor_set(0,0.0);
+        return 0;
+}
+
+void* __battery_checker(void* ptr)
+{
+        double new_v;
+        while(rc_get_state()!=EXITING){
+                new_v = rc_adc_dc_jack();
+                // if the value doesn't make sense, use nominal voltage
+                if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
+                mb_state.vBattery = new_v;
+
+                rc_usleep(1000000 / BATTERY_CHECK_HZ);
+        }
+        return NULL;
+}

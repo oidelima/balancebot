@@ -2,6 +2,7 @@
 #define MB_STRUCTS_H
 
 typedef struct mb_state mb_state_t;
+
 struct mb_state{
     // raw sensor inputs
     float   theta;             // body angle (rad)
@@ -22,7 +23,14 @@ struct mb_state{
     //TODO: Add more variables to this state as needed
     float vBattery;
 
+    float left_w_angle;
+    float right_w_angle;
+
     float SLC_d1_u;
+    float SLC_d2_u;
+
+   
+    
 };
 
 typedef struct mb_setpoints mb_setpoints_t;
