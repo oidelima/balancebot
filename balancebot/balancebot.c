@@ -229,17 +229,18 @@ void balancebot_controller(){
 	mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(2);
 	mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(1);
 
+	// Update odometry 
+	mb_odometry_update(&mb_odometry, &mb_state);
+	
 	// collect encoder positions, right wheel is reversed
-	mb_state.right_w_angle = (rc_encoder_eqep_read(1) * 2.0 * M_PI) \
-							/(ENC_1_POL * GEAR_RATIO * ENCODER_RES);
-	mb_state.left_w_angle = (rc_encoder_eqep_read(2) * 2.0 * M_PI) \
-							/(ENC_2_POL * GEAR_RATIO * ENCODER_RES);
+	mb_state.right_w_angle = (mb_state.right_encoder * 2.0 * M_PI) \
+							/(GEAR_RATIO * ENCODER_RES);
+	mb_state.left_w_angle = (mb_state.left_encoder * 2.0 * M_PI) \
+							/(GEAR_RATIO * ENCODER_RES);
 
 	mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
 	
-	// Update odometry 
-	mb_odometry_update(&mb_odometry, &mb_state);
-
+	
 	// Calculate controller outputs
 	if(!mb_setpoints.manual_ctl){
 		// Auto Mode
@@ -260,7 +261,7 @@ void balancebot_controller(){
 		if(POSITION_HOLD){
 			if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
 		
-			mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,mb_state.phi-mb_setpoints.phi);
+			mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,-(mb_state.phi-mb_setpoints.phi));
 			mb_setpoints.theta = mb_state.SLC_d2_u;
 		}   
         else mb_setpoints.theta = 0.0;
@@ -406,14 +407,14 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_state.SLC_d1_u);
 			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
 			printf("%7.3f  |", mb_state.SLC_d2_u);
-			printf("%7.3f  |", mb_state.phi-mb_setpoints.phi);
+			printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
 			printf("%7.3f  |", mb_setpoints.theta);
 
 			
 			//Logger
 			double readings[] = {mb_state.theta, mb_state.phi, mb_state.left_encoder, mb_state.right_encoder,mb_state.left_w_angle,mb_state.right_w_angle,
 			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.SLC_d1_u,
-			    mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, mb_state.phi-mb_setpoints.phi,mb_setpoints.theta };
+			    mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), mb_setpoints.theta};
 			M = realloc(M, num_var*(row+1)*sizeof(double));
 		    for (int col = 0; col < num_var; col++)
         		*(M + row*num_var + col) = readings[col];
