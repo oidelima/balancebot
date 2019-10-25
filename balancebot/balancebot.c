@@ -242,6 +242,28 @@ void balancebot_controller(){
 		// Auto Mode
 		//send motor commands
 
+		double x_dest = 100;
+    	double y_dest = 100;
+	    double K_p = 0.1;
+        double K_b = -0.1;
+        double K_a = 0.5;
+        double dt = 1/100;
+        double x = mb_odometry.x;
+        double y = mb_odometry.y;
+        double theta = mb_odometry.psi;
+
+        double p = sqrt(pow((x - x_dest),2)+pow((y - y_dest),2));
+        double alpha = -theta + atan2(y_dest - y, x_dest - x);
+        double beta = -theta - alpha;
+        if (-M_PI/2 < alpha && alpha <= M_PI/2){
+            mb_setpoints.fwd_velocity = K_p*p;
+        }else{
+            alpha = -theta + atan2(-y_dest + y, -x_dest + x);
+            beta = -theta - alpha;
+            mb_setpoints.fwd_velocity  = -K_p*p;
+        }
+        mb_setpoints.turn_velocity = K_a*alpha + K_b*beta;
+
 	}
 
 	if(mb_setpoints.manual_ctl){
