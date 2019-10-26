@@ -10,6 +10,9 @@ struct mb_state{
     int     left_encoder;      // left encoder counts since last reading
     int     right_encoder;     // right encoder counts since last reading
 
+    float   left_torque;
+    float   right_torque;
+
     float   gyro_z;
 
     //outputs

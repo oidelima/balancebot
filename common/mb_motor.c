@@ -193,7 +193,7 @@ double mb_motor_read_current(int motor){
         pin_volt = rc_adc_read_volt(MOT_2_CS);
     }
 
-    printf("Motor current: %f\n", pin_volt/0.5);
+    // printf("Motor current: %f\n", pin_volt/0.5);
 
     return pin_volt/0.5;
 }
