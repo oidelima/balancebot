@@ -62,6 +62,7 @@ int main(){
         return -1;
     }
 
+	//start dsm connection 
     if(rc_dsm_init()==-1){
 		fprintf(stderr,"failed to start initialize DSM\n");
 		return -1;
@@ -196,6 +197,7 @@ int main(){
 	rc_mpu_power_off();
 	mb_motor_cleanup();
 	rc_led_cleanup();
+	rc_dsm_cleanup();
 	rc_encoder_eqep_cleanup();
 	rc_remove_pid_file(); // remove pid file LAST 
 	return 0;
@@ -210,7 +212,6 @@ int main(){
 *
 * TODO: You must implement this function to keep the balancebot balanced
 * 
-*
 *******************************************************************************/
 void balancebot_controller(){
 	//lock state and setpoint mutex
@@ -250,8 +251,6 @@ void balancebot_controller(){
 
 		/************************************************************
         * OUTER LOOP PHI controller D2
-        * Move the position setpoint based on phi_dot.
-        * Input to the controller is phi error (setpoint-state).
         *************************************************************/
         
 		if(POSITION_HOLD){
@@ -263,9 +262,7 @@ void balancebot_controller(){
         else mb_setpoints.theta = 0.0;
 
 		/************************************************************
-		* INNER LOOP ANGLE Theta controller D1
-		* Input to D1 is theta error (setpoint-state). Then scale the
-		* output u to compensate for changing battery voltage.
+		* INNER LOOP Body Angle Theta controller
 		*************************************************************/
 
 		// SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
@@ -273,8 +270,8 @@ void balancebot_controller(){
 
 		/**********************************************************
         * Steering controller D3
-        * move the setpoint gamma based on user input like phi
         ***********************************************************/
+
         if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT;
         mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
 
@@ -314,24 +311,47 @@ void* setpoint_control_loop(void* ptr){
 	// lock setpoint mutex
 	pthread_mutex_lock(&setpoint_mutex);
 
+	double fwd_input, turn_input;
+
 	// setpoints [0 0 0] (theta, phi, psi) for test
 	// mb_setpoints.theta = 0;
-	mb_setpoints.phi = 0;
-	mb_setpoints.psi = 0;
+	// mb_setpoints.phi = 0;
+	// mb_setpoints.psi = 0;
 
-	mb_setpoints.fwd_velocity = 0;
-	mb_setpoints.turn_velocity = 0;
-	mb_setpoints.manual_ctl = 1;
+	// mb_setpoints.fwd_velocity = 0;
+	// mb_setpoints.turn_velocity = 0;
+	// mb_setpoints.manual_ctl = 1;
 
 	// unlock setpoint mutex
 	pthread_mutex_unlock(&setpoint_mutex);
 
 	while(1){
-
 		if(rc_dsm_is_new_data()){
 				// TODO: Handle the DSM data from the Spektrum radio reciever
 				// You may should implement switching between manual and autonomous mode
 				// using channel 5 of the DSM data.
+
+				if(rc_dsm_ch_normalized(ARM_CH)<0.1) mb_setpoints.manual_ctl = 1;
+				else mb_setpoints.manual_ctl =0;
+
+				fwd_input = rc_dsm_ch_normalized(FWD_CH) * FWD_POL;
+				turn_input = rc_dsm_ch_normalized(TURN_CH) * TURN_POL;
+
+				rc_saturate_double(&fwd_input, -1.0, 1.0);
+				rc_saturate_double(&turn_input, -1.0, 1.0);
+
+				if(fabs(fwd_input)<DEAD_ZONE) fwd_input = 0.0;
+				if(fabs(turn_input)<DEAD_ZONE) turn_input = 0.0;
+
+				mb_setpoints.fwd_velocity = fwd_input * RATE_SENST;
+				mb_setpoints.turn_velocity = turn_input * RATE_SENST;
+
+		}
+		else if(rc_dsm_is_connection_active()==0){
+			mb_setpoints.theta = 0;
+			mb_setpoints.fwd_velocity = 0;
+			mb_setpoints.turn_velocity = 0;
+			continue;
 		}
 	 	rc_nanosleep(1E9 / RC_CTL_HZ);
 	}
@@ -353,7 +373,7 @@ void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
 	
 	int row = 0;
-	int num_var = 19;
+	int num_var = 20;
 	double* M = (double*) malloc(num_var * sizeof(double));
 
 	while(rc_get_state()!=EXITING){
@@ -361,8 +381,9 @@ void* printf_loop(void* ptr){
 		// check if this is the first time since being paused
 		if(new_state==RUNNING && last_state!=RUNNING){
 			printf("\nRUNNING: Hold upright to balance.\n");
-			printf("                 SENSORS               										//|            MOCAP            |//");
+			printf(" DSM |                              STATES								|            MOCAP            |");
 			printf("\n");
+			printf(" MODE|");
 			printf("    θ    |");
 			printf("    φ    |");
 			printf("    ψ    |");
@@ -398,6 +419,8 @@ void* printf_loop(void* ptr){
 			printf("\r");
 			//Add Print stattements here, do not follow with /n
 			pthread_mutex_lock(&state_mutex);
+			if(mb_setpoints.manual_ctl) printf("  M  |");
+			else printf("  A  |");
 			printf("%7.3f  |", mb_state.theta);
 			printf("%7.3f  |", mb_state.phi);
 			printf("%7.3f  |", mb_odometry.psi);
@@ -421,7 +444,7 @@ void* printf_loop(void* ptr){
 
 			
 			//Logger
-			double readings[] = {mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder,mb_state.left_w_angle,mb_state.right_w_angle,
+			double readings[] = {mb_setpoints.manual_ctl, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder,mb_state.left_w_angle,mb_state.right_w_angle,
 			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.SLC_d1_u, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
 				mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR};
 			M = realloc(M, num_var*(row+1)*sizeof(double));
@@ -459,7 +482,7 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
 	return 1;
   }
 
-  char * headers[] = {"Theta", "Phi", "Psi" "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "D1_U", "Error_u","D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R" };
+  char * headers[] = {"Mode", "Theta", "Phi", "Psi" "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "D1_U", "Error_u","D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R" };
 
 
   //Printing headers to csv
@@ -491,7 +514,6 @@ static int __arm_controller(void)
         __zero_out_controller();
         rc_encoder_eqep_write(1,0);
         rc_encoder_eqep_write(2,0);
-        // prefill_filter_inputs(&D1,cstate.theta);
         mb_setpoints.manual_ctl = 1;
         return 0;
 }

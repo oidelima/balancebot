@@ -35,6 +35,15 @@
 #define D1_DEN_LEN		3
 #define D1_SATURATION_TIMEOUT	0.4
 
+//variables for handling transmitter input
+#define FWD_CH          1
+#define TURN_CH         3
+#define FWD_POL         1
+#define TURN_POL        1
+#define ARM_CH          5
+#define DEAD_ZONE       0.005
+#define RATE_SENST      1.0
+
 extern ctrl_params_t body_angle;
 extern ctrl_params_t position;
 extern ctrl_params_t steering;
