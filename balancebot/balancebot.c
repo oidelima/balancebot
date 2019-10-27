@@ -278,19 +278,14 @@ void balancebot_controller(){
         * Steering controller D3
         ***********************************************************/
 
-        if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT;
+        if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
         mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
-
 
 		// mb_state.SLC_d1_u = 1;
 		// mb_state.SLC_d3_u = 0;
 
-
-
 		mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
 		mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
-
-
 
 		mb_motor_set(LEFT_MOTOR, mb_state.dutyL);
 		mb_motor_set(RIGHT_MOTOR, mb_state.dutyR);
@@ -395,9 +390,11 @@ void* printf_loop(void* ptr){
 		// check if this is the first time since being paused
 		if(new_state==RUNNING && last_state!=RUNNING){
 			printf("\nRUNNING: Hold upright to balance.\n");
-			printf(" DSM |                              STATES								|            MOCAP            |");
+			printf(" DSM | SETPOINTS |                            STATES								|            MOCAP            |");
 			printf("\n");
 			printf(" MODE|");
+			printf(" φ_set |");
+			printf(" ψ_set |");
 			printf("    θ    |");
 			printf("    φ    |");
 			printf("    ψ    |");
@@ -442,7 +439,9 @@ void* printf_loop(void* ptr){
 			pthread_mutex_lock(&state_mutex);
 			if(mb_setpoints.manual_ctl) printf("  M  |");
 			else printf("  A  |");
-			printf("%7.3f  |", mb_state.theta);
+			// printf("%7.3f  |", mb_state.theta);
+			printf("%7.3f  |", mb_setpoints.phi);
+			printf("%7.3f  |", mb_setpoints.psi);
 			printf("%7.3f  |", mb_state.theta/M_PI*180);
 			printf("%7.3f  |", mb_state.phi);
 			printf("%7.3f  |", mb_odometry.psi);

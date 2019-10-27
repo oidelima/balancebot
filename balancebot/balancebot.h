@@ -37,12 +37,12 @@
 
 //variables for handling transmitter input
 #define FWD_CH          1
-#define TURN_CH         3
+#define TURN_CH         2
 #define FWD_POL         1
 #define TURN_POL        1
 #define ARM_CH          5
 #define DEAD_ZONE       0.005
-#define RATE_SENST      1.0
+#define RATE_SENST      0.1
 
 extern ctrl_params_t body_angle;
 extern ctrl_params_t position;
