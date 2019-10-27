@@ -110,6 +110,7 @@ int main(){
 	mpu_config.dmp_sample_rate = SAMPLE_RATE_HZ;
 	mpu_config.orient = ORIENTATION_Z_DOWN;
 	mpu_config.dmp_fetch_accel_gyro=1;
+	mpu_config.dmp_sample_rate = 200;
 
 	// now set up the imu for dmp interrupt operation
 	if(rc_mpu_initialize_dmp(&mpu_data, mpu_config)){
@@ -151,7 +152,7 @@ int main(){
 	rc_filter_enable_saturation(&SLC_D3, -1.0, 1.0); 			
 	rc_filter_enable_soft_start(&SLC_D3, SOFT_START_TIME/DT);
 
-	printf("Setting brakes ON!");
+	printf("Setting brakes ON!\n");
 	mb_motor_brake(1);
 
 	printf("Inner Loop controller SLC_D1:\n");
@@ -176,7 +177,7 @@ int main(){
 	printf("attaching imu interupt...\n");
 	rc_mpu_set_dmp_callback(&balancebot_controller);
 
-	printf("we are running!!!...\n");
+	printf("\nwe are running!!!...\n");
 	// done initializing so set state to RUNNING
 	rc_set_state(RUNNING); 
 
@@ -220,11 +221,16 @@ void balancebot_controller(){
 
 	// Read IMU
 	mb_state.theta = mpu_data.dmp_TaitBryan[TB_PITCH_X] - BALANCE_OFFSET;
+	
 	mb_state.gyro_z = mpu_data.gyro[2]*M_PI/180.0;
 
 	// Read encoders
-	mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(2);
-	mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(1);
+	mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(LEFT_MOTOR);
+	mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(RIGHT_MOTOR);
+
+	// Read motor current
+	// mb_state.left_torque = mb_motor_read_current(LEFT_MOTOR);
+	// mb_state.right_torque = mb_motor_read_current(RIGHT_MOTOR);
 
 	// Update odometry 
 	mb_odometry_update(&mb_odometry, &mb_state);
@@ -275,8 +281,16 @@ void balancebot_controller(){
         if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT;
         mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
 
+
+		// mb_state.SLC_d1_u = 1;
+		// mb_state.SLC_d3_u = 0;
+
+
+
 		mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
 		mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
+
+
 
 		mb_motor_set(LEFT_MOTOR, mb_state.dutyL);
 		mb_motor_set(RIGHT_MOTOR, mb_state.dutyR);
@@ -387,13 +401,16 @@ void* printf_loop(void* ptr){
 			printf("    θ    |");
 			printf("    φ    |");
 			printf("    ψ    |");
-			printf("  L Enc  |");
-			printf("  R Enc  |");
-			printf("  L phi  |");
-			printf("  R phi  |");
+
+			// printf("  L Enc  |");
+			// printf("  R Enc  |");
+			// printf("  L phi  |");
+			// printf("  R phi  |");
+			
 			printf("    X    |");
 			printf("    Y    |");
 			printf("    ψ    |");
+			
 			printf("   D1_u  |");
 			printf("  err_θ  |");
 			printf("   D2_u  |");
@@ -401,8 +418,12 @@ void* printf_loop(void* ptr){
 			printf("  θ_set  |");
 			printf("   D3_u  |");
 			printf("  err_ψ  |");
+			
 			printf(" duty_L  |");
 			printf(" duty_R  |");
+
+			// printf(" tau_L   | ");
+			// printf(" tau_R   |");
 
 			printf("\n");
 		}
@@ -422,15 +443,22 @@ void* printf_loop(void* ptr){
 			if(mb_setpoints.manual_ctl) printf("  M  |");
 			else printf("  A  |");
 			printf("%7.3f  |", mb_state.theta);
+			printf("%7.3f  |", mb_state.theta/M_PI*180);
 			printf("%7.3f  |", mb_state.phi);
 			printf("%7.3f  |", mb_odometry.psi);
-			printf("%7d  |", mb_state.left_encoder);
-			printf("%7d  |", mb_state.right_encoder);
-			printf("%7.3f  |", mb_state.left_w_angle);
-			printf("%7.3f  |", mb_state.right_w_angle);
-			printf("%7.3f  |", mb_state.opti_x);
-			printf("%7.3f  |", mb_state.opti_y);
-			printf("%7.3f  |", mb_state.opti_yaw);
+
+			// printf("%7d  |", mb_state.left_encoder);
+			// printf("%7d  |", mb_state.right_encoder);
+			// printf("%7.3f  |", mb_state.left_w_angle);
+			// printf("%7.3f  |", mb_state.right_w_angle);
+
+			// printf("%7.3f  |", mb_state.opti_x);
+			// printf("%7.3f  |", mb_state.opti_y);
+			// printf("%7.3f  |", mb_state.opti_yaw);
+			printf("%7.3f  |", mb_odometry.x);
+			printf("%7.3f  |", mb_odometry.y);
+			printf("%7.3f  |", mb_odometry.psi);
+
 			printf("%7.3f  |", mb_state.SLC_d1_u);
 			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
 			printf("%7.3f  |", mb_state.SLC_d2_u);
@@ -438,8 +466,11 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_setpoints.theta);
 			printf("%7.3f  |", mb_state.SLC_d3_u);
 			printf("%7.3f  |", -(mb_odometry.psi-mb_setpoints.psi));
+
 			printf("%7.3f  |", mb_state.dutyL);
 			printf("%7.3f  |", mb_state.dutyR);
+			// printf("%7.3f  |", mb_state.left_torque);
+			// printf("%7.3f  |", mb_state.right_torque);
 
 
 			
@@ -462,9 +493,6 @@ void* printf_loop(void* ptr){
 			// printf("%7.3f  |", mb_odometry.psi*180/M_PI);
 
 
-			// printf("%7.3f  |", mb_state.SLC_d1_u);
-			// printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
-			// printf("%7.3f  |", mb_state.vBattery);
 			pthread_mutex_unlock(&state_mutex);
 			fflush(stdout);
 		}
