@@ -27,6 +27,11 @@ rc_filter_t SLC_D1 = RC_FILTER_INITIALIZER;  //body angle controller
 rc_filter_t SLC_D2 = RC_FILTER_INITIALIZER;  //position controller 
 rc_filter_t SLC_D3 = RC_FILTER_INITIALIZER;	 //steering controller
 
+rc_filter_t le_lpf = RC_FILTER_INITIALIZER;
+rc_filter_t re_lpf = RC_FILTER_INITIALIZER;
+
+double le, re; //output from LPFs
+
 /*******************************************************************************
 * int main() 
 *
@@ -152,6 +157,22 @@ int main(){
 	rc_filter_enable_saturation(&SLC_D3, -1.0, 1.0); 			
 	rc_filter_enable_soft_start(&SLC_D3, SOFT_START_TIME/DT);
 
+	// Initialize LPFs for encoders
+	rc_filter_first_order_lowpass(&le_lpf, DT, TIME_CONSTANT);
+	rc_filter_first_order_lowpass(&re_lpf, DT, TIME_CONSTANT);
+
+	// Prefill filters
+	rc_filter_prefill_inputs(&SLC_D1, 0.0);
+	rc_filter_prefill_inputs(&SLC_D2, 0.0);
+	rc_filter_prefill_inputs(&SLC_D3, 0.0);
+	rc_filter_prefill_inputs(&le_lpf, 0.0);
+	rc_filter_prefill_inputs(&re_lpf, 0.0);
+	rc_filter_prefill_outputs(&SLC_D1, 0.0);
+	rc_filter_prefill_outputs(&SLC_D2, 0.0);
+	rc_filter_prefill_outputs(&SLC_D3, 0.0);
+	rc_filter_prefill_outputs(&le_lpf, 0.0);
+	rc_filter_prefill_outputs(&re_lpf, 0.0);
+
 	printf("Setting brakes ON!\n");
 	mb_motor_brake(1);
 
@@ -225,8 +246,11 @@ void balancebot_controller(){
 	mb_state.gyro_z = mpu_data.gyro[2]*M_PI/180.0;
 
 	// Read encoders
-	mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(LEFT_MOTOR);
-	mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(RIGHT_MOTOR);
+	mb_state.left_encoder = rc_filter_march(&le_lpf, ENC_2_POL * rc_encoder_eqep_read(LEFT_MOTOR));
+	mb_state.right_encoder = rc_filter_march(&re_lpf, ENC_1_POL * rc_encoder_eqep_read(RIGHT_MOTOR));
+
+	// mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(LEFT_MOTOR);
+	// mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(RIGHT_MOTOR);
 
 	// Read motor current
 	// mb_state.left_torque = mb_motor_read_current(LEFT_MOTOR);
@@ -382,7 +406,7 @@ void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
 	
 	int row = 0;
-	int num_var = 20;
+	int num_var = 19;
 	double* M = (double*) malloc(num_var * sizeof(double));
 
 	while(rc_get_state()!=EXITING){
@@ -398,24 +422,19 @@ void* printf_loop(void* ptr){
 			printf("    θ    |");
 			printf("    φ    |");
 			printf("    ψ    |");
-
 			// printf("  L Enc  |");
 			// printf("  R Enc  |");
-			// printf("  L phi  |");
-			// printf("  R phi  |");
-			
+			printf("  L phi  |");
+			printf("  R phi  |");
 			printf("    X    |");
 			printf("    Y    |");
 			printf("    ψ    |");
-			
-			printf("   D1_u  |");
 			printf("  err_θ  |");
 			printf("   D2_u  |");
 			printf("  err_φ  |");
 			printf("  θ_set  |");
 			printf("   D3_u  |");
 			printf("  err_ψ  |");
-			
 			printf(" duty_L  |");
 			printf(" duty_R  |");
 
@@ -448,8 +467,8 @@ void* printf_loop(void* ptr){
 
 			// printf("%7d  |", mb_state.left_encoder);
 			// printf("%7d  |", mb_state.right_encoder);
-			// printf("%7.3f  |", mb_state.left_w_angle);
-			// printf("%7.3f  |", mb_state.right_w_angle);
+			printf("%7.3f  |", mb_state.left_w_angle);
+			printf("%7.3f  |", mb_state.right_w_angle);
 
 			// printf("%7.3f  |", mb_state.opti_x);
 			// printf("%7.3f  |", mb_state.opti_y);
@@ -457,15 +476,13 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_odometry.x);
 			printf("%7.3f  |", mb_odometry.y);
 			printf("%7.3f  |", mb_odometry.psi);
-
-			printf("%7.3f  |", mb_state.SLC_d1_u);
+			// printf("%7.3f  |", mb_state.SLC_d1_u);
 			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
 			printf("%7.3f  |", mb_state.SLC_d2_u);
 			printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
 			printf("%7.3f  |", mb_setpoints.theta);
 			printf("%7.3f  |", mb_state.SLC_d3_u);
 			printf("%7.3f  |", -(mb_odometry.psi-mb_setpoints.psi));
-
 			printf("%7.3f  |", mb_state.dutyL);
 			printf("%7.3f  |", mb_state.dutyR);
 			// printf("%7.3f  |", mb_state.left_torque);
@@ -474,8 +491,8 @@ void* printf_loop(void* ptr){
 
 			
 			//Logger
-			double readings[] = {mb_setpoints.manual_ctl, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder,mb_state.left_w_angle,mb_state.right_w_angle,
-			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.SLC_d1_u, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
+			double readings[] = {mb_setpoints.manual_ctl, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
+			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
 				mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR};
 			M = realloc(M, num_var*(row+1)*sizeof(double));
 		    for (int col = 0; col < num_var; col++)
@@ -509,7 +526,7 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
 	return 1;
   }
 
-  char * headers[] = {"Mode", "Theta", "Phi", "Psi" "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "D1_U", "Error_u","D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R" };
+  char * headers[] = {"Mode", "Theta", "Phi", "Psi", "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "Error_θ", "D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R" };
 
 
   //Printing headers to csv

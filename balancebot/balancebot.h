@@ -24,6 +24,9 @@
 #define BATTERY_CHECK_HZ    100
 #define POSITION_HOLD       1
 
+// encoder filter time constant
+#define TIME_CONSTANT       0.0159
+
 // inner loop controller 100hz
 #define D1_GAIN			1
 #define D2_GAIN         1
