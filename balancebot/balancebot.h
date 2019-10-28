@@ -65,6 +65,7 @@ void balancebot_controller();
 //threads
 void* setpoint_control_loop(void* ptr);
 void* printf_loop(void* ptr);
+void* io_loop(void* ptr);
 int writeMatrixToFile(char* fileName, double* matrix, int height, int width);
 static int __arm_controller(void);
 static int __zero_out_controller(void);

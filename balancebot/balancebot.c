@@ -19,6 +19,9 @@
 #include <rc/pthread.h>
 #include <rc/encoder_eqep.h>
 #include <rc/time.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "balancebot.h"
 
@@ -100,6 +103,11 @@ int main(){
                 fprintf(stderr, "failed to start battery thread\n");
                 return -1;
 	}
+
+	// start io thread
+	printf("starting io thread... \n");
+	pthread_t  io_thread;
+	rc_pthread_create(&io_thread, io_loop, (void*) NULL, SCHED_OTHER, 0);
 
 	// TODO: start motion capture message recieve thread
 
@@ -369,7 +377,6 @@ void* setpoint_control_loop(void* ptr){
 
 
 
-
 /*******************************************************************************
 * printf_loop() 
 *
@@ -502,6 +509,44 @@ void* printf_loop(void* ptr){
 	return NULL;
 } 
 
+void* io_loop(void* ptr){
+    int loop = 0;
+    char* type = "";
+    double dk = 0.001;
+    while(rc_get_state()!=EXITING){
+        char input[20];
+        fgets(input,20,stdin);
+        if (strcmp(input, "1\n")==0 || strcmp(input, "2\n")==0 || strcmp(input, "3\n")==0){
+            loop = atoi(input);
+        }else if (strcmp(input, "p\n")==0){
+            type = "p";
+        }else if (strcmp(input, "d\n")==0){
+            type = "d";
+        }else if (strcmp(input, "i\n")==0){
+            type = "i";
+        }
+
+        //handle inner loop
+        if (loop == 1){
+            if (strcmp(type, "p") == 0){
+                if (strcmp(input, "+\n")==0){
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp + dk, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
+			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			        return -1;
+            	}
+                }else if (strcmp(input, "-\n")==0){
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp - dk, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
+			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			        return -1;
+                }
+            }
+        }
+
+        printf("Loop = %d\n", loop);
+        printf("Type = %s\n", type);
+        printf("K_i = %f\n", K_i);
+    }
+}
 
 int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
   FILE* fp = fopen(fileName, "w");
