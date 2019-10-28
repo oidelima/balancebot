@@ -115,7 +115,6 @@ int main(){
 	mpu_config.dmp_sample_rate = SAMPLE_RATE_HZ;
 	mpu_config.orient = ORIENTATION_Z_DOWN;
 	mpu_config.dmp_fetch_accel_gyro=1;
-	mpu_config.dmp_sample_rate = 200;
 
 	// now set up the imu for dmp interrupt operation
 	if(rc_mpu_initialize_dmp(&mpu_data, mpu_config)){
@@ -173,8 +172,6 @@ int main(){
 	rc_filter_prefill_outputs(&le_lpf, 0.0);
 	rc_filter_prefill_outputs(&re_lpf, 0.0);
 
-	printf("Setting brakes ON!\n");
-	mb_motor_brake(1);
 
 	printf("Inner Loop controller SLC_D1:\n");
 	rc_filter_print(SLC_D1);
@@ -187,6 +184,9 @@ int main(){
 
 	printf("initializing motors...\n");
 	mb_motor_init();
+
+	printf("Setting brakes ON!\n");
+	mb_motor_brake(1);
 
 	printf("resetting encoders...\n");
 	rc_encoder_eqep_write(1, 0);
@@ -384,6 +384,7 @@ void* setpoint_control_loop(void* ptr){
 			mb_setpoints.theta = 0;
 			mb_setpoints.fwd_velocity = 0;
 			mb_setpoints.turn_velocity = 0;
+			// mb_setpoints.manual_ctl = 1;
 			continue;
 		}
 	 	rc_nanosleep(1E9 / RC_CTL_HZ);

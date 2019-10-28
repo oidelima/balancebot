@@ -17,7 +17,7 @@
 #include "../common/mb_odometry.h"
 #include "../xbee_serial/xbee_receive.h"
 
-#define BALANCE_OFFSET      1*M_PI/180
+#define BALANCE_OFFSET      2.5*M_PI/180
 #define SOFT_START_TIME     0.01
 #define DT                  0.01
 #define V_NOMINAL           12
