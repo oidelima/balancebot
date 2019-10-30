@@ -407,7 +407,7 @@ void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
 	
 	int row = 0;
-	int num_var = 19;
+	int num_var = 22;
 	double* M = (double*) malloc(num_var * sizeof(double));
 
 	while(rc_get_state()!=EXITING){
@@ -494,7 +494,7 @@ void* printf_loop(void* ptr){
 			//Logger
 			double readings[] = {mb_setpoints.manual_ctl, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
 			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
-				mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR};
+				mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR, mb_odometry.x, mb_odometry.y, mb_odometry.psi};
 			M = realloc(M, num_var*(row+1)*sizeof(double));
 		    for (int col = 0; col < num_var; col++)
         		*(M + row*num_var + col) = readings[col];
@@ -527,7 +527,7 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
 	return 1;
   }
 
-  char * headers[] = {"Mode", "Theta", "Phi", "Psi", "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "Error_θ", "D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R" };
+  char * headers[] = {"Mode", "Theta", "Phi", "Psi", "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "Error_θ", "D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R", "Odo_X", "Odo_Y", "Odo_Psi"};
 
 
   //Printing headers to csv
