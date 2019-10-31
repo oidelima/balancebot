@@ -241,28 +241,50 @@ void balancebot_controller(){
 	if(!mb_setpoints.manual_ctl){
 		// Auto Mode
 		//send motor commands
-
-		double x_dest = 100;
-    	double y_dest = 100;
-	    double K_p = 0.1;
-        double K_b = -0.1;
-        double K_a = 0.5;
-        double dt = 1/100;
-        double x = mb_odometry.x;
+		double x = mb_odometry.x;
         double y = mb_odometry.y;
         double theta = mb_odometry.psi;
+        double x_dest_arr[] = {1, 1, 0, 0};
+        double y_dest_arr[] = {0, 1, 1, 0};
+        double beta_off[] = {0.0, M_PI/2, M_PI, 3*M_PI/2};
+        double K_p = 0.1;
+        double K_a = 2;
+        double K_b = -0.1;
+        double v = 0.0;
+        double w = 0.0;
+        double dt = 0.01;
+        double epsilon = 0.01;
+        double p, x_dest, y_dest, goal_ang, alpha, beta;
 
-        double p = sqrt(pow((x - x_dest),2)+pow((y - y_dest),2));
-        double alpha = -theta + atan2(y_dest - y, x_dest - x);
-        double beta = -theta - alpha;
-        if (-M_PI/2 < alpha && alpha <= M_PI/2){
-            mb_setpoints.fwd_velocity = K_p*p;
-        }else{
-            alpha = -theta + atan2(-y_dest + y, -x_dest + x);
-            beta = -theta - alpha;
-            mb_setpoints.fwd_velocity  = -K_p*p;
+        for (int lap = 1; lap <= 4; lap++){
+            for (int dest = 1; dest <= 4; dest++){
+                p = 1000.0;
+                x_dest = x_dest_arr[dest-1];
+                y_dest = y_dest_arr[dest-1];
+                while(p > epsilon) {
+
+                    p = sqrt(pow((x - x_dest),2)+pow((y - y_dest),2));
+                    goal_ang = bound(atan2(y_dest - y, x_dest - x), 0 , 2*M_PI);
+                    alpha = bound(-theta + goal_ang, -M_PI, M_PI);
+
+                    if(-M_PI*1.5/2 < alpha && alpha <= M_PI*1.5/2){
+                        mb_setpoints.fwd_velocity = K_p*p;
+                    }else{
+                        goal_ang = bound(atan2(-y_dest + y, -x_dest + x), 0 , 2*M_PI);
+                        alpha = -theta + goal_ang;
+                        mb_setpoints.fwd_velocity = -K_p*p;
+                    }
+                    beta = -theta - alpha + beta_off[dest-1];
+                    mb_setpoints.turn_velocity = K_a*alpha + K_b*beta;
+                    theta = bound(mb_odometry.psi;, 0, 2*M_PI);
+                    x = mb_odometry.x;
+                    y = mb_odometry.y;
+
+                }
+            }
         }
-        mb_setpoints.turn_velocity = K_a*alpha + K_b*beta;
+        //printf("x: %f", x);
+        //printf("y: %f", y);
 
 	}
 
