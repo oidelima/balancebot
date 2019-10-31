@@ -256,6 +256,30 @@ void balancebot_controller(){
 	if(!mb_setpoints.manual_ctl){
 		// Auto Mode
 		//send motor commands
+		/*
+
+        double x_dest = 11.5;
+    	double y_dest = 0;
+	    double K_p = 0.05;
+        double K_b = -0.01;
+        double K_a = 5;
+        double dt = 1/100;
+        double x = mb_odometry.x;
+        double y = mb_odometry.y;
+        double theta = mb_odometry.psi;
+
+        double p = sqrt(pow((x - x_dest),2)+pow((y - y_dest),2));
+        double alpha = -theta + atan2(y_dest - y, x_dest - x);
+        double beta = -theta - alpha;
+        if (-M_PI/2 < alpha && alpha <= M_PI/2){
+            mb_setpoints.fwd_velocity = K_p*p;
+        }else{
+            alpha = -theta + atan2(-y_dest + y, -x_dest + x);
+            beta = -theta - alpha;
+            mb_setpoints.fwd_velocity  = -K_p*p;
+        }
+        mb_setpoints.turn_velocity = K_a*alpha + K_b*beta;
+        */
 
 	}
 
@@ -537,12 +561,14 @@ void* io_loop(void* ptr){
         if (loop == 1){
             if (strcmp(type, "p") == 0){
                 if (strcmp(input, "+\n")==0){
-                    if(rc_filter_pid(&SLC_D1, body_angle.kp + dk, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
+                    body_angle.kp += dk;
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
             	    }
                 }else if (strcmp(input, "-\n")==0){
-                    if(rc_filter_pid(&SLC_D1, body_angle.kp - dk, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
+                    body_angle.kp -= dk;
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
                     }
@@ -551,12 +577,14 @@ void* io_loop(void* ptr){
 
             if (strcmp(type, "i") == 0){
                 if (strcmp(input, "+\n")==0){
-                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki + dk, body_angle.kd, body_angle.tf, DT)){
+                    body_angle.ki += dk;
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
             	    }
                 }else if (strcmp(input, "-\n")==0){
-                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki - dk, body_angle.kd, body_angle.tf, DT)){
+                    body_angle.ki -= dk;
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
                     }
@@ -565,12 +593,14 @@ void* io_loop(void* ptr){
 
             if (strcmp(type, "d") == 0){
                 if (strcmp(input, "+\n")==0){
-                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki , body_angle.kd + dk, body_angle.tf, DT)){
+                    body_angle.kd += dk;
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki , body_angle.kd , body_angle.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
             	    }
                 }else if (strcmp(input, "-\n")==0){
-                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki , body_angle.kd - dk, body_angle.tf, DT)){
+                    body_angle.kd -= dk;
+                    if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki , body_angle.kd, body_angle.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
                     }
@@ -582,12 +612,14 @@ void* io_loop(void* ptr){
         if (loop == 2){
             if (strcmp(type, "p") == 0){
                 if (strcmp(input, "+\n")==0){
-                    if(rc_filter_pid(&SLC_D2, body_angle.kp + dk, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
+                    position.kp += dk;
+                    if(rc_filter_pid(&SLC_D2, position.kp, position.ki, position.kd, position.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
             	    }
                 }else if (strcmp(input, "-\n")==0){
-                    if(rc_filter_pid(&SLC_D2, body_angle.kp - dk, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
+                    position.kp -= dk;
+                    if(rc_filter_pid(&SLC_D2, position.kp, position.ki, position.kd, position.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
                     }
@@ -596,12 +628,14 @@ void* io_loop(void* ptr){
 
             if (strcmp(type, "i") == 0){
                 if (strcmp(input, "+\n")==0){
-                    if(rc_filter_pid(&SLC_D2, body_angle.kp, body_angle.ki + dk, body_angle.kd, body_angle.tf, DT)){
+                    position.ki += dk;
+                    if(rc_filter_pid(&SLC_D2, position.kp, position.ki, position.kd, position.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
             	    }
                 }else if (strcmp(input, "-\n")==0){
-                    if(rc_filter_pid(&SLC_D2, body_angle.kp, body_angle.ki - dk, body_angle.kd, body_angle.tf, DT)){
+                    position.ki -= dk;
+                    if(rc_filter_pid(&SLC_D2, position.kp, position.ki, position.kd, position.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
                     }
@@ -610,21 +644,31 @@ void* io_loop(void* ptr){
 
             if (strcmp(type, "d") == 0){
                 if (strcmp(input, "+\n")==0){
-                    if(rc_filter_pid(&SLC_D2, body_angle.kp, body_angle.ki , body_angle.kd + dk, body_angle.tf, DT)){
+                    position.kd += dk;
+                    if(rc_filter_pid(&SLC_D2, position.kp, position.ki , position.kd, position.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
             	    }
                 }else if (strcmp(input, "-\n")==0){
-                    if(rc_filter_pid(&SLC_D2, body_angle.kp, body_angle.ki , body_angle.kd - dk, body_angle.tf, DT)){
+                    position.kd -= dk;
+                    if(rc_filter_pid(&SLC_D2, position.kp, position.ki , position.kd, position.tf, DT)){
 			            fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			        return -1;
                     }
                 }
             }
         }
-       // printf("Loop = %d\n", loop);
-       // printf("Type = %s\n", type);
-       // printf("K_i = %f\n", K_i);
+
+        FILE * fp;
+        fp = fopen ("io.txt","r+");
+        fprintf(fp, "Body angle K_p = %f\n", body_angle.kp);
+	    fprintf(fp, "Body angle K_i = %f\n", body_angle.ki);
+	    fprintf(fp, "Body angle K_d = %f\n", body_angle.kd);
+	    fprintf(fp, "Position K_p = %f\n", position.kp);
+	    fprintf(fp, "Position K_i = %f\n", position.ki);
+	    fprintf(fp, "Position K_d = %f\n", position.kd);
+	    fclose (fp);
+
     }
 }
 
