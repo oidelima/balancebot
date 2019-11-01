@@ -44,9 +44,9 @@
 #define FWD_POL         1
 #define TURN_POL        1
 #define ARM_CH          5
-#define DEAD_ZONE       0.1
-#define RATE_SENST_FWD  0.5
-#define RATE_SENST_TURN  0.05
+#define DEAD_ZONE       0.01
+#define RATE_SENST_FWD  0.25
+#define RATE_SENST_TURN  0.1
 
 
 extern ctrl_params_t body_angle;

@@ -43,7 +43,7 @@ void mb_odometry_update(mb_odometry_t* mb_odometry, mb_state_t* mb_state){
     mb_odometry->y += delta_y;
     mb_odometry->psi += alpha;
 
-    mb_odometry->psi = mb_clamp_radians(mb_odometry->psi);
+    // mb_odometry->psi = mb_clamp_radians(mb_odometry->psi);
 }
 
 

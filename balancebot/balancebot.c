@@ -555,36 +555,15 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
   return 0;
 }
 
-static int __arm_controller(void)
-{
-        __zero_out_controller();
-        rc_encoder_eqep_write(1,0);
-        rc_encoder_eqep_write(2,0);
-        mb_setpoints.manual_ctl = 1;
-        return 0;
-}
-
-static int __zero_out_controller(void)
-{
-        rc_filter_reset(&SLC_D1);
-        rc_filter_reset(&SLC_D2);
-        //rc_filter_reset(&D3);
-        // setpoint.theta = 0.0;
-        // setpoint.phi   = 0.0;
-        // setpoint.gamma = 0.0;
-        // rc_motor_set(0,0.0);
-        return 0;
-}
-
-void* __battery_checker(void* ptr)
-{
-        double new_v;
-        while(rc_get_state()!=EXITING){
-                new_v = rc_adc_batt();
-                // if the value doesn't make sense, use nominal voltage
-                // if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
-                mb_state.vBattery = new_v;
-                rc_usleep(1000000 / BATTERY_CHECK_HZ);
-        }
-        return NULL;
-}
+// void* __battery_checker(void* ptr)
+// {
+//         double new_v;
+//         while(rc_get_state()!=EXITING){
+//                 new_v = rc_adc_batt();
+//                 // if the value doesn't make sense, use nominal voltage
+//                 // if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
+//                 mb_state.vBattery = new_v;
+//                 rc_usleep(1000000 / BATTERY_CHECK_HZ);
+//         }
+//         return NULL;
+// }
