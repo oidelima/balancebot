@@ -248,13 +248,13 @@ void balancebot_controller(){
 	// Read encoders
 	mb_state.left_encoder = rc_filter_march(&le_lpf, ENC_2_POL * rc_encoder_eqep_read(LEFT_MOTOR));
 	mb_state.right_encoder = rc_filter_march(&re_lpf, ENC_1_POL * rc_encoder_eqep_read(RIGHT_MOTOR));
-
 	// mb_state.left_encoder = ENC_2_POL * rc_encoder_eqep_read(LEFT_MOTOR);
 	// mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(RIGHT_MOTOR);
 
+
 	// Read motor current
-	// mb_state.left_torque = mb_motor_read_current(LEFT_MOTOR);
-	// mb_state.right_torque = mb_motor_read_current(RIGHT_MOTOR);
+	mb_state.left_torque = mb_motor_read_current(LEFT_MOTOR);
+	mb_state.right_torque = mb_motor_read_current(RIGHT_MOTOR);
 
 	// Update odometry 
 	mb_odometry_update(&mb_odometry, &mb_state);
@@ -406,9 +406,9 @@ void* setpoint_control_loop(void* ptr){
 void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
 	
-	int row = 0;
-	int num_var = 22;
-	double* M = (double*) malloc(num_var * sizeof(double));
+	// int row = 0;
+	// int num_var = 22;
+	// double* M = (double*) malloc(num_var * sizeof(double));
 
 	while(rc_get_state()!=EXITING){
 		new_state = rc_get_state();
@@ -422,7 +422,7 @@ void* printf_loop(void* ptr){
 			printf(" ψ_set |");
 			printf("    θ    |");
 			printf("    φ    |");
-			printf("    ψ    |");
+			// printf("    ψ    |");
 			// printf("  L Enc  |");
 			// printf("  R Enc  |");
 			printf("  L phi  |");
@@ -430,17 +430,18 @@ void* printf_loop(void* ptr){
 			printf("    X    |");
 			printf("    Y    |");
 			printf("    ψ    |");
-			printf("  err_θ  |");
-			printf("   D2_u  |");
-			printf("  err_φ  |");
-			printf("  θ_set  |");
-			printf("   D3_u  |");
-			printf("  err_ψ  |");
+
+			// printf("  err_θ  |");
+			// printf("   D2_u  |");
+			// printf("  err_φ  |");
+			// printf("  θ_set  |");
+			// printf("   D3_u  |");
+			// printf("  err_ψ  |");
 			printf(" duty_L  |");
 			printf(" duty_R  |");
 
-			// printf(" tau_L   | ");
-			// printf(" tau_R   |");
+			printf(" tau_L   | ");
+			printf(" tau_R   |");
 
 			printf("\n");
 		}
@@ -464,50 +465,31 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_setpoints.psi);
 			printf("%7.3f  |", mb_state.theta/M_PI*180);
 			printf("%7.3f  |", mb_state.phi);
-			printf("%7.3f  |", mb_odometry.psi);
+			// printf("%7.3f  |", mb_odometry.psi);
 
 			// printf("%7d  |", mb_state.left_encoder);
 			// printf("%7d  |", mb_state.right_encoder);
 			printf("%7.3f  |", mb_state.left_w_angle);
 			printf("%7.3f  |", mb_state.right_w_angle);
 
-			// printf("%7.3f  |", mb_state.opti_x);
-			// printf("%7.3f  |", mb_state.opti_y);
-			// printf("%7.3f  |", mb_state.opti_yaw);
+
 			printf("%7.3f  |", mb_odometry.x);
 			printf("%7.3f  |", mb_odometry.y);
 			printf("%7.3f  |", mb_odometry.psi);
+
 			// printf("%7.3f  |", mb_state.SLC_d1_u);
-			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
-			printf("%7.3f  |", mb_state.SLC_d2_u);
-			printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
-			printf("%7.3f  |", mb_setpoints.theta);
-			printf("%7.3f  |", mb_state.SLC_d3_u);
-			printf("%7.3f  |", -(mb_odometry.psi-mb_setpoints.psi));
+			// printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
+			// printf("%7.3f  |", mb_state.SLC_d2_u);
+			// printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
+			// printf("%7.3f  |", mb_setpoints.theta);
+			// printf("%7.3f  |", mb_state.SLC_d3_u);
+			// printf("%7.3f  |", -(mb_odometry.psi-mb_setpoints.psi));
+
 			printf("%7.3f  |", mb_state.dutyL);
 			printf("%7.3f  |", mb_state.dutyR);
-			// printf("%7.3f  |", mb_state.left_torque);
-			// printf("%7.3f  |", mb_state.right_torque);
+			printf("%7.3f  |", mb_state.left_torque);
+			printf("%7.3f  |", mb_state.right_torque);
 
-
-			
-			//Logger
-			double readings[] = {mb_setpoints.manual_ctl, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
-			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
-				mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR, mb_odometry.x, mb_odometry.y, mb_odometry.psi};
-			M = realloc(M, num_var*(row+1)*sizeof(double));
-		    for (int col = 0; col < num_var; col++)
-        		*(M + row*num_var + col) = readings[col];
-		    row++;
-            writeMatrixToFile(fileName, M, row, num_var);
-
-			// printf("%7.3f  |", mb_state.opti_x);
-			// printf("%7.3f  |", mb_state.opti_y);
-			// printf("%7.3f  |", mb_state.opti_yaw);
-
-			// printf("%7.3f  |", mb_odometry.x);
-			// printf("%7.3f  |", mb_odometry.y);
-			// printf("%7.3f  |", mb_odometry.psi*180/M_PI);
 
 
 			pthread_mutex_unlock(&state_mutex);
