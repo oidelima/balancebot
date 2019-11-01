@@ -376,8 +376,8 @@ void* setpoint_control_loop(void* ptr){
 				if(fabs(fwd_input)<DEAD_ZONE) fwd_input = 0.0;
 				if(fabs(turn_input)<DEAD_ZONE) turn_input = 0.0;
 
-				mb_setpoints.fwd_velocity = fwd_input * RATE_SENST;
-				mb_setpoints.turn_velocity = turn_input * RATE_SENST;
+				mb_setpoints.fwd_velocity = fwd_input * RATE_SENST_FWD;
+				mb_setpoints.turn_velocity = turn_input * RATE_SENST_TURN;
 
 		}
 		else if(rc_dsm_is_connection_active()==0){
@@ -407,7 +407,7 @@ void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
 	
 	int row = 0;
-	int num_var = 22;
+	int num_var = 25;
 	double* M = (double*) malloc(num_var * sizeof(double));
 
 	while(rc_get_state()!=EXITING){
@@ -491,15 +491,15 @@ void* printf_loop(void* ptr){
 
 
 			
-			//Logger
-			double readings[] = {mb_setpoints.manual_ctl, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
-			    mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
-				mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR, mb_odometry.x, mb_odometry.y, mb_odometry.psi};
-			M = realloc(M, num_var*(row+1)*sizeof(double));
-		    for (int col = 0; col < num_var; col++)
-        		*(M + row*num_var + col) = readings[col];
-		    row++;
-            writeMatrixToFile(fileName, M, row, num_var);
+			// //Logger
+			// double readings[] = {mb_setpoints.manual_ctl, mb_setpoints.phi, mb_setpoints.psi, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
+			//     mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi), 
+			// 	mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR, mb_odometry.x, mb_odometry.y, mb_odometry.psi, mb_state.gyro_z};
+			// M = realloc(M, num_var*(row+1)*sizeof(double));
+		    // for (int col = 0; col < num_var; col++)
+        	// 	*(M + row*num_var + col) = readings[col];
+		    // row++;
+            // writeMatrixToFile(fileName, M, row, num_var);
 
 			// printf("%7.3f  |", mb_state.opti_x);
 			// printf("%7.3f  |", mb_state.opti_y);
@@ -527,7 +527,8 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
 	return 1;
   }
 
-  char * headers[] = {"Mode", "Theta", "Phi", "Psi", "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", "Error_θ", "D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R", "Odo_X", "Odo_Y", "Odo_Psi"};
+  char * headers[] = {"Mode", "φ_set", "ψ_set", "Theta", "Phi", "Psi", "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", 
+  "Error_θ", "D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R", "Odo_X", "Odo_Y", "Odo_Psi", "Gyro_Z"};
 
 
   //Printing headers to csv
