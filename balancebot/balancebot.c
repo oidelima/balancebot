@@ -273,6 +273,8 @@ void balancebot_controller(){
 		// Auto Mode
 		//send motor commands
 
+
+
 	}
 
 	if(mb_setpoints.manual_ctl){
@@ -384,9 +386,34 @@ void* setpoint_control_loop(void* ptr){
 			mb_setpoints.theta = 0;
 			mb_setpoints.fwd_velocity = 0;
 			mb_setpoints.turn_velocity = 0;
-			// mb_setpoints.manual_ctl = 1;
+			mb_setpoints.manual_ctl = 1;
 			continue;
 		}
+
+		if(!mb_setpoints.manual_ctl){
+		// Auto Mode
+		//send motor commands
+			switch(TASK){
+				case 2:
+					break;
+				case 3: 
+					break;
+				default:
+					continue;
+			}
+
+		}
+
+		if(mb_setpoints.manual_ctl){
+
+			if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
+			if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
+
+
+		}
+
+
+
 	 	rc_nanosleep(1E9 / RC_CTL_HZ);
 	}
 	return NULL;
@@ -555,15 +582,15 @@ int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
   return 0;
 }
 
-// void* __battery_checker(void* ptr)
-// {
-//         double new_v;
-//         while(rc_get_state()!=EXITING){
-//                 new_v = rc_adc_batt();
-//                 // if the value doesn't make sense, use nominal voltage
-//                 // if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
-//                 mb_state.vBattery = new_v;
-//                 rc_usleep(1000000 / BATTERY_CHECK_HZ);
-//         }
-//         return NULL;
-// }
+void* __battery_checker(void* ptr)
+{
+        double new_v;
+        while(rc_get_state()!=EXITING){
+                new_v = rc_adc_batt();
+                // if the value doesn't make sense, use nominal voltage
+                // if (new_v>14.0 || new_v<10.0) new_v = V_NOMINAL;
+                mb_state.vBattery = new_v;
+                rc_usleep(1000000 / BATTERY_CHECK_HZ);
+        }
+        return NULL;
+}
