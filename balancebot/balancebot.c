@@ -252,13 +252,14 @@ void balancebot_controller(){
 	// mb_state.right_encoder = ENC_1_POL * rc_encoder_eqep_read(RIGHT_MOTOR);
 
 
-	// Read motor current
-	mb_state.left_torque = mb_motor_read_current(LEFT_MOTOR);
-	mb_state.right_torque = mb_motor_read_current(RIGHT_MOTOR);
-
 	// Update odometry 
 	mb_odometry_update(&mb_odometry, &mb_state);
-	
+
+	// Read motor current
+	mb_state.left_torque = mb_motor_read_current(LEFT_MOTOR) /0.5;
+	mb_state.right_torque = mb_motor_read_current(RIGHT_MOTOR) /0.5;
+
+
 	// collect encoder positions, right wheel is reversed
 	mb_state.right_w_angle = (mb_state.right_encoder * 2.0 * M_PI) \
 							/(GEAR_RATIO * ENCODER_RES);
@@ -303,13 +304,18 @@ void balancebot_controller(){
         ***********************************************************/
 
         if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
-        mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
+        // mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
 
 		// mb_state.SLC_d1_u = 1;
 		// mb_state.SLC_d3_u = 0;
 
-		mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
-		mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
+		// mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
+		// mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
+		
+		mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_state.left_torque - mb_state.right_torque);
+
+		mb_state.dutyL = mb_state.SLC_d1_u;
+		mb_state.dutyR = mb_state.SLC_d3_u;
 
 		mb_motor_set(LEFT_MOTOR, mb_state.dutyL);
 		mb_motor_set(RIGHT_MOTOR, mb_state.dutyR);
