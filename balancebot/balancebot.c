@@ -266,56 +266,41 @@ void balancebot_controller(){
 							/(GEAR_RATIO * ENCODER_RES);
 
 	mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
+
+	/************************************************************
+	* OUTER LOOP PHI controller D2
+	*************************************************************/
 	
+	if(POSITION_HOLD){
+		if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
 	
-	// Calculate controller outputs
-	if(!mb_setpoints.manual_ctl){
-		// Auto Mode
-		//send motor commands
+		mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,-(mb_state.phi-mb_setpoints.phi));
+		mb_setpoints.theta = mb_state.SLC_d2_u;
+	}   
+	else mb_setpoints.theta = 0.0;
 
+	/************************************************************
+	* INNER LOOP Body Angle Theta controller
+	*************************************************************/
 
+	// SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
+	mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_state.theta-mb_setpoints.theta));
 
-	}
+	/**********************************************************
+	* Steering controller D3
+	***********************************************************/
 
-	if(mb_setpoints.manual_ctl){
-		// Manual Mode
-		//send motor commands
+	if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
+	mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
 
-		/************************************************************
-        * OUTER LOOP PHI controller D2
-        *************************************************************/
-        
-		if(POSITION_HOLD){
-			if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
-		
-			mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,-(mb_state.phi-mb_setpoints.phi));
-			mb_setpoints.theta = mb_state.SLC_d2_u;
-		}   
-        else mb_setpoints.theta = 0.0;
+	// mb_state.SLC_d1_u = 1;
+	// mb_state.SLC_d3_u = 0;
 
-		/************************************************************
-		* INNER LOOP Body Angle Theta controller
-		*************************************************************/
+	mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
+	mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
 
-		// SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
-		mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_state.theta-mb_setpoints.theta));
-
-		/**********************************************************
-        * Steering controller D3
-        ***********************************************************/
-
-        if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
-        mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
-
-		// mb_state.SLC_d1_u = 1;
-		// mb_state.SLC_d3_u = 0;
-
-		mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
-		mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
-
-		mb_motor_set(LEFT_MOTOR, mb_state.dutyL);
-		mb_motor_set(RIGHT_MOTOR, mb_state.dutyR);
-	}
+	mb_motor_set(LEFT_MOTOR, mb_state.dutyL);
+	mb_motor_set(RIGHT_MOTOR, mb_state.dutyR);
 
 
 	// XBEE_getData();
@@ -369,17 +354,37 @@ void* setpoint_control_loop(void* ptr){
 				if(rc_dsm_ch_normalized(ARM_CH)<0.1) mb_setpoints.manual_ctl = 1;
 				else mb_setpoints.manual_ctl =0;
 
-				fwd_input = rc_dsm_ch_normalized(FWD_CH) * FWD_POL;
-				turn_input = rc_dsm_ch_normalized(TURN_CH) * TURN_POL;
+				if(!mb_setpoints.manual_ctl){
+				// Auto Mode
+				//send motor commands
+					switch(TASK){
+						case 2:
+							break;
+						case 3: 
+							break;
+						default:
+							continue;
+					}
 
-				rc_saturate_double(&fwd_input, -1.0, 1.0);
-				rc_saturate_double(&turn_input, -1.0, 1.0);
+				}
 
-				if(fabs(fwd_input)<DEAD_ZONE) fwd_input = 0.0;
-				if(fabs(turn_input)<DEAD_ZONE) turn_input = 0.0;
+				if(mb_setpoints.manual_ctl){
+				// Manual Mode
+					fwd_input = rc_dsm_ch_normalized(FWD_CH) * FWD_POL;
+					turn_input = rc_dsm_ch_normalized(TURN_CH) * TURN_POL;
 
-				mb_setpoints.fwd_velocity = fwd_input * RATE_SENST_FWD;
-				mb_setpoints.turn_velocity = turn_input * RATE_SENST_TURN;
+					rc_saturate_double(&fwd_input, -1.0, 1.0);
+					rc_saturate_double(&turn_input, -1.0, 1.0);
+
+					if(fabs(fwd_input)<DEAD_ZONE) fwd_input = 0.0;
+					if(fabs(turn_input)<DEAD_ZONE) turn_input = 0.0;
+
+					mb_setpoints.fwd_velocity = fwd_input * RATE_SENST_FWD;
+					mb_setpoints.turn_velocity = turn_input * RATE_SENST_TURN;
+
+					if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
+					if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity*DT/WHEEL_BASE;
+				}
 
 		}
 		else if(rc_dsm_is_connection_active()==0){
@@ -389,29 +394,6 @@ void* setpoint_control_loop(void* ptr){
 			mb_setpoints.manual_ctl = 1;
 			continue;
 		}
-
-		if(!mb_setpoints.manual_ctl){
-		// Auto Mode
-		//send motor commands
-			switch(TASK){
-				case 2:
-					break;
-				case 3: 
-					break;
-				default:
-					continue;
-			}
-
-		}
-
-		if(mb_setpoints.manual_ctl){
-
-			// if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
-			// if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
-
-		}
-
-
 
 	 	rc_nanosleep(1E9 / RC_CTL_HZ);
 	}
