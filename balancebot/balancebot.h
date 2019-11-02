@@ -46,6 +46,7 @@ pthread_mutex_t setpoint_mutex;
 mb_state_t mb_state;
 mb_setpoints_t mb_setpoints;
 mb_odometry_t mb_odometry;
+mb_tp_t mb_tp;
 
 xbee_packet_t xbeeMsg;
 int XBEE_portID;
