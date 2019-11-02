@@ -17,12 +17,15 @@
 #include "../common/mb_odometry.h"
 #include "../xbee_serial/xbee_receive.h"
 
-#define BALANCE_OFFSET      1*M_PI/180
-#define SOFT_START_TIME     0.1
+#define BALANCE_OFFSET      2.5*M_PI/180
+#define SOFT_START_TIME     0.01
 #define DT                  0.01
 #define V_NOMINAL           12
 #define BATTERY_CHECK_HZ    100
 #define POSITION_HOLD       1
+
+// encoder filter time constant
+#define TIME_CONSTANT       0.0159
 
 // inner loop controller 100hz
 #define D1_GAIN			1
@@ -34,6 +37,19 @@
 #define D1_NUM_LEN		3
 #define D1_DEN_LEN		3
 #define D1_SATURATION_TIMEOUT	0.4
+
+//variables for handling transmitter input
+#define FWD_CH          1
+#define TURN_CH         2
+#define FWD_POL         1
+#define TURN_POL        1
+#define ARM_CH          5
+#define DEAD_ZONE       0.01
+#define RATE_SENST_FWD  0.25
+#define RATE_SENST_TURN  0.1
+
+#define TASK            2
+
 
 extern ctrl_params_t body_angle;
 extern ctrl_params_t position;
@@ -58,8 +74,7 @@ void balancebot_controller();
 void* setpoint_control_loop(void* ptr);
 void* printf_loop(void* ptr);
 int writeMatrixToFile(char* fileName, double* matrix, int height, int width);
-static int __arm_controller(void);
-static int __zero_out_controller(void);
+
 void* __battery_checker(void* ptr);
 
 #endif
