@@ -32,6 +32,7 @@ rc_filter_t re_lpf = RC_FILTER_INITIALIZER;
 
 double le, re; //output from LPFs
 
+
 /*******************************************************************************
 * int main() 
 *
@@ -89,6 +90,10 @@ int main(){
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
+
+	
+
+	
 	printf("starting print thread... \n");
 	pthread_t  printf_thread;
 	rc_pthread_create(&printf_thread, printf_loop, (void*) NULL, SCHED_OTHER, 0);
@@ -192,8 +197,11 @@ int main(){
 	rc_encoder_eqep_write(1, 0);
 	rc_encoder_eqep_write(2, 0);
 
+
 	printf("initializing odometry...\n");
-	mb_odometry_init(&mb_odometry, 0.0,0.0,0.0);
+	mb_odometry_init(&mb_odometry, 0.1,2.0,-0.1);
+
+
 
 	printf("attaching imu interupt...\n");
 	rc_mpu_set_dmp_callback(&balancebot_controller);
@@ -266,18 +274,20 @@ void balancebot_controller(){
 	mb_state.left_w_angle = (mb_state.left_encoder * 2.0 * M_PI) \
 							/(GEAR_RATIO * ENCODER_RES);
 
-	mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
+	// mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
+	mb_state.phi = mb_odometry.phi + mb_state.theta;
 
 	/************************************************************
 	* OUTER LOOP PHI controller D2
 	*************************************************************/
 	
 	if(POSITION_HOLD){
-		// if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
+		if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
 		mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,-(mb_state.phi-mb_setpoints.phi));
 		mb_setpoints.theta = mb_state.SLC_d2_u;
 	}   
 	else mb_setpoints.theta = 0.0;
+
 
 	/************************************************************
 	* INNER LOOP Body Angle Theta controller
@@ -329,16 +339,11 @@ void* setpoint_control_loop(void* ptr){
 	static int sp_loop_id;
 	static int done = 0;
 	static int swtch = 0;
-	static double start_psi, start_phi;
+	static double start_psi, start_phi, start_x, start_y;
 
-	// setpoints [0 0 0] (theta, phi, psi) for test
-	// mb_setpoints.theta = 0;
-	// mb_setpoints.phi = 0;
-	// mb_setpoints.psi = 0;
-
-	// mb_setpoints.fwd_velocity = 0;
-	// mb_setpoints.turn_velocity = 0;
-	// mb_setpoints.manual_ctl = 1;
+	static int T2_turn, T2_round;
+	static int T2_state = 0; // 0 for turning, 1 for trun done, 2 for going straight, 3 for straight done
+	static double pre_phi;
 
 	// unlock setpoint mutex
 	pthread_mutex_unlock(&setpoint_mutex);
@@ -357,7 +362,12 @@ void* setpoint_control_loop(void* ptr){
 					mb_setpoints.manual_ctl = 0;
 					if(!swtch){
 						start_phi = mb_state.phi;
-						start_psi = mb_state.psi;
+						start_psi = mb_odometry.psi;
+						start_x = mb_odometry.x;
+						start_y = mb_odometry.y;
+						pre_phi = mb_odometry.phi;
+
+						T2_state = 2;
 						swtch = 1;
 					}
 				}
@@ -367,18 +377,49 @@ void* setpoint_control_loop(void* ptr){
 				//send motor commands
 					switch(TASK){
 						case 2:
-							if(mb_state.phi - start_phi >= (4*4)/(WHEEL_DIAMETER/2) || done = 1){
-								mb_setpoints.fwd_velocity = 0.0;
-								mb_setpoints.turn_velocity = 0.0;
-								done = 1;
+							if(done == 0){
+								switch(T2_state){
+									case 0:
+										// set psi setpoint +90
+										mb_setpoints.psi += M_PI/2;
+										T2_state = 1;
+										break;
+									case 1:
+										// check turn done?
+										if(fabs(mb_odometry.psi-mb_setpoints.psi)<0.01){
+											T2_turn += 1;
+											// check task done?
+											if(T2_turn == 4){
+												T2_round += 1;
+												T2_turn = 0;
+												if(T2_round == 4){
+													done = 1;
+												}
+											}
+											// into state2
+											T2_state = 2;
+										}
+										break;
+									case 2:
+										// set phi adding 1m
+										if(fabs(mb_odometry.phi-pre_phi) < 0.9){
+											mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+										}else{
+											mb_setpoints.fwd_velocity = 0;
+											mb_setpoints.phi = (pre_phi + 1)/WHEEL_DIAMETER; //
+											T2_state = 3;
+										}
+										break;
+									case 3:
+										// check finish straight?
+										if(fabs(mb_odometry.phi-mb_setpoints.phi) < 0.01){
+											T2_state = 0;
+										}
+										break;
+								}
 							}
-							else mb_setpoints.fwd_velocity = 0.25 * RATE_SENST_FWD;
-
-							if((mb_state.phi - start_phi >= 0.9/(WHEEL_DIAMETER/2)) && (mb_state.phi - start_phi <= 1.1/(WHEEL_DIAMETER/2))){
-								mb_setpoints.turn_velocity = -1.0 * RATE_SENST_TURN;
-							}
-							else mb_setpoints.turn_velocity = 0.0;
 							break;
+
 						case 3:
 							if(mb_state.phi - start_phi >= 11/(WHEEL_DIAMETER/2) || done = 1){
 								mb_setpoints.fwd_velocity = 0.0;
@@ -445,11 +486,8 @@ void* setpoint_control_loop(void* ptr){
 *******************************************************************************/
 void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
-	
-	int row = 0;
-	int num_var = 25;
-	double* M = (double*) malloc(num_var * sizeof(double));
-
+	char fileName[] = "log.csv";
+	FILE* fp = fopen(fileName, "a");
 	while(rc_get_state()!=EXITING){
 		new_state = rc_get_state();
 		// check if this is the first time since being paused
@@ -490,8 +528,7 @@ void* printf_loop(void* ptr){
 		}
 		last_state = new_state;
 
-        //Logger init
-		char fileName[] = "log.csv";
+
 
 		if(new_state == RUNNING){
 
@@ -527,9 +564,27 @@ void* printf_loop(void* ptr){
 
 			printf("%7.3f  |", mb_state.dutyL);
 			printf("%7.3f  |", mb_state.dutyR);
-			printf("%7.3f  |", mb_state.left_torque);
-			printf("%7.3f  |", mb_state.right_torque);
+			// printf("%7.3f  |", mb_state.left_torque);
+			// printf("%7.3f  |", mb_state.right_torque);
 
+             printf("%7.3f  |", mb_state.opti_x);
+             printf("%7.3f  |", mb_state.opti_y);
+             printf("%7.3f  |", mb_state.opti_yaw);
+
+             printf("%7.3f  |", mb_odometry.x);
+             printf("%7.3f  |", mb_odometry.y);
+             printf("%7.3f  |", mb_odometry.psi*180/M_PI);
+
+
+			 //Logger
+
+		    
+		    int num_var = 25;
+            double readings[] = {mb_setpoints.manual_ctl, mb_setpoints.phi, mb_setpoints.psi, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
+                 mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi),
+             	mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR, mb_odometry.x, mb_odometry.y, mb_odometry.psi, mb_state.gyro_z};
+
+             writeMatrixToFile(fp, readings,  num_var);
 
 
 			pthread_mutex_unlock(&state_mutex);
@@ -539,41 +594,24 @@ void* printf_loop(void* ptr){
 
 
 	}
+	fclose(fp);
 	return NULL;
 } 
 
 
-int writeMatrixToFile(char* fileName, double* matrix, int height, int width) {
-  FILE* fp = fopen(fileName, "w");
-  if (fp == NULL) {
-	return 1;
-  }
+int writeMatrixToFile(FILE* fp, double matrix[], int num_var) {
+  
+  //Printing values to csv
+  for (int i = 0; i < num_var; i++) {
 
-  char * headers[] = {"Mode", "φ_set", "ψ_set", "Theta", "Phi", "Psi", "Left encoder", "Right encoder","L phi ", "R phi ", "X", "Y", "Psi", 
-  "Error_θ", "D2_u", "err_φ", "θ_set", "D3_u", "err_ψ", "duty_L", "duty_R", "Odo_X", "Odo_Y", "Odo_Psi", "Gyro_Z"};
-
-
-  //Printing headers to csv
-  for (int j = 0; j < width; j++){
-        if (j > 0) {
+  	if (i > 0) {
     	fputc(',', fp);
   	}
-	fprintf (fp, "%s", headers[j]);
+  	fprintf(fp, "%lf", matrix[i]);
 	}
   fputs("\r\n", fp);
 
-
-  //Printing values to csv
-  for (int i = 0; i < height; i++) {
-	for (int j = 0; j < width; j++) {
-  	if (j > 0) {
-    	fputc(',', fp);
-  	}
-  	fprintf(fp, "%lf", matrix[i*width +j]);
-	}
-	fputs("\r\n", fp);
-  }
-  fclose(fp);
+  
   return 0;
 }
 

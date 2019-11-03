@@ -54,6 +54,7 @@ struct mb_odometry{
     float x;        //x position from initialization in m
     float y;        //y position from initialization in m
     float psi;      //orientation from initialization in rad
+    float phi;
 
     int last_left_encoder;      // last left encoder reading
     int last_right_encoder;     // last right encoder reading

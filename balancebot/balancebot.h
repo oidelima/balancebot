@@ -67,7 +67,7 @@ void balancebot_controller();
 //threads
 void* setpoint_control_loop(void* ptr);
 void* printf_loop(void* ptr);
-int writeMatrixToFile(char* fileName, double* matrix, int height, int width);
+int writeMatrixToFile(FILE* fp,  double matrix[], int num_var);
 
 void* __battery_checker(void* ptr);
 
