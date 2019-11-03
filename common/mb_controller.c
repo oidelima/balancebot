@@ -93,6 +93,10 @@ int mb_controller_load_config(){
                     steering.kd = kd;
                     steering.tf = tf;
                     break;
+                case 'T':
+                    RATE_SENST_FWD = kp;
+                    RATE_SENST_TURN = kd;
+                    TASK = tf;
                 default:
                     continue;
                     

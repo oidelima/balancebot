@@ -34,4 +34,8 @@
 #define PRINTF_HZ                  10 // rate of print loop
 #define RC_CTL_HZ                  25 // rate of RC data update
 
+double RATE_SENST_FWD; 
+double RATE_SENST_TURN;  
+int TASK;
+
 #endif
