@@ -44,8 +44,12 @@
 #define FWD_POL         1
 #define TURN_POL        1
 #define ARM_CH          5
-#define DEAD_ZONE       0.005
-#define RATE_SENST      0.1
+#define DEAD_ZONE       0.01
+#define RATE_SENST_FWD  0.25
+#define RATE_SENST_TURN  0.1
+
+#define TASK            2
+
 
 extern ctrl_params_t body_angle;
 extern ctrl_params_t position;
@@ -69,8 +73,7 @@ void balancebot_controller();
 void* setpoint_control_loop(void* ptr);
 void* printf_loop(void* ptr);
 int writeMatrixToFile(char* fileName, double* matrix, int height, int width);
-static int __arm_controller(void);
-static int __zero_out_controller(void);
+
 void* __battery_checker(void* ptr);
 
 #endif
