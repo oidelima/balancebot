@@ -17,7 +17,7 @@
 #include "../common/mb_odometry.h"
 #include "../xbee_serial/xbee_receive.h"
 
-#define BALANCE_OFFSET      2.5*M_PI/180
+#define BALANCE_OFFSET      1.8*M_PI/180
 #define SOFT_START_TIME     0.01
 #define DT                  0.01
 #define V_NOMINAL           12
@@ -25,7 +25,7 @@
 #define POSITION_HOLD       1
 
 // encoder filter time constant
-#define TIME_CONSTANT       0.0159
+#define TIME_CONSTANT       0.0159    // equivalent to 10Hz cut-off frequency
 
 // inner loop controller 100hz
 #define D1_GAIN			1

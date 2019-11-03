@@ -150,7 +150,7 @@ int main(){
 			return -1;
 	}
 	SLC_D2.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2, -0.52, 0.52); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_saturation(&SLC_D2, -0.3, 0.3); 			//need to find the limits for theta - now +/- 30 deg
 	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
 
 	if(rc_filter_pid(&SLC_D3, steering.kp, steering.ki, steering.kd, steering.tf, DT)){
@@ -421,7 +421,7 @@ void* setpoint_control_loop(void* ptr){
 							break;
 
 						case 3:
-							if(mb_state.phi - start_phi >= 11/(WHEEL_DIAMETER/2) || done = 1){
+							if(mb_state.phi - start_phi >= 11/(WHEEL_DIAMETER/2) || done == 1){
 								mb_setpoints.fwd_velocity = 0.0;
 								// mb_setpoints.theta = 0.0;    		
 								done = 1;
