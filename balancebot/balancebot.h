@@ -62,7 +62,6 @@ pthread_mutex_t setpoint_mutex;
 mb_state_t mb_state;
 mb_setpoints_t mb_setpoints;
 mb_odometry_t mb_odometry;
-mb_tp_t mb_tp;
 
 xbee_packet_t xbeeMsg;
 int XBEE_portID;
@@ -73,7 +72,7 @@ void balancebot_controller();
 //threads
 void* setpoint_control_loop(void* ptr);
 void* printf_loop(void* ptr);
-int writeMatrixToFile(char* fileName, double* matrix, int height, int width);
+int writeMatrixToFile(FILE* fp,  double matrix[], int num_var);
 
 void* __battery_checker(void* ptr);
 

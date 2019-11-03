@@ -32,6 +32,7 @@ rc_filter_t re_lpf = RC_FILTER_INITIALIZER;
 
 double le, re; //output from LPFs
 
+
 /*******************************************************************************
 * int main() 
 *
@@ -89,6 +90,10 @@ int main(){
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
+
+	
+
+	
 	printf("starting print thread... \n");
 	pthread_t  printf_thread;
 	rc_pthread_create(&printf_thread, printf_loop, (void*) NULL, SCHED_OTHER, 0);
@@ -196,8 +201,7 @@ int main(){
 	printf("initializing odometry...\n");
 	mb_odometry_init(&mb_odometry, 0.1,2.0,-0.1);
 
-	printf("initializing tp...\n");
-	mb_tp_init(&mb_tp, 0.0,0.0,0.0);
+
 
 	printf("attaching imu interupt...\n");
 	rc_mpu_set_dmp_callback(&balancebot_controller);
@@ -417,7 +421,8 @@ void* setpoint_control_loop(void* ptr){
 *******************************************************************************/
 void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
-
+	char fileName[] = "log.csv";
+	FILE* fp = fopen(fileName, "a");
 	while(rc_get_state()!=EXITING){
 		new_state = rc_get_state();
 		// check if this is the first time since being paused
@@ -507,13 +512,13 @@ void* printf_loop(void* ptr){
 
 			 //Logger
 
-		    char fileName[] = "log.csv";
+		    
 		    int num_var = 25;
             double readings[] = {mb_setpoints.manual_ctl, mb_setpoints.phi, mb_setpoints.psi, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
                  mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi),
              	mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR, mb_odometry.x, mb_odometry.y, mb_odometry.psi, mb_state.gyro_z};
 
-             writeMatrixToFile(fileName, readings,  num_var);
+             writeMatrixToFile(fp, readings,  num_var);
 
 
 			pthread_mutex_unlock(&state_mutex);
@@ -523,13 +528,14 @@ void* printf_loop(void* ptr){
 
 
 	}
+	fclose(fp);
 	return NULL;
 } 
 
 
-int writeMatrixToFile(char* fileName, double matrix[], int num_var) {
-  FILE* fp = fopen(fileName, "a");
-  if (fp == NULL) {
+int writeMatrixToFile(FILE* fp, double matrix[], int num_var) {
+  
+  /*if (fp == NULL) {
 	return 1;
   }
 
@@ -550,7 +556,7 @@ int writeMatrixToFile(char* fileName, double matrix[], int num_var) {
 		}
 	  fputs("\r\n", fp);
     }
-}
+}*/
 
   //Printing values to csv
   for (int i = 0; i < num_var; i++) {
@@ -562,7 +568,7 @@ int writeMatrixToFile(char* fileName, double matrix[], int num_var) {
 	}
   fputs("\r\n", fp);
 
-  fclose(fp);
+  
   return 0;
 }
 
