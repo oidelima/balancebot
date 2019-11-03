@@ -402,8 +402,9 @@ void* setpoint_control_loop(void* ptr){
 										break;
 									case 2:
 										// set phi adding 1m
-										if((fabs(mb_odometry.phi-pre_phi) < 0.9 )&& fabs(mb_setpoints.phi-(pre_phi + 1)/(WHEEL_DIAMETER/2))<0.1){
-											mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+										if((fabs(mb_odometry.phi-pre_phi) < 0.9 )){
+											// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+											mb_setpoints.fwd_velocity = 0.1*RATE_SENST_FWD;
 										}else{
 											mb_setpoints.fwd_velocity = 0;
 											mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
@@ -412,6 +413,8 @@ void* setpoint_control_loop(void* ptr){
 										break;
 									case 3:
 										// check finish straight?
+										printf("TASK 2: Case 3\n");
+
 										if(fabs(mb_odometry.phi-mb_setpoints.phi) < 0.01){
 											T2_state = 0;
 										}
