@@ -56,6 +56,29 @@ struct mb_odometry{
     int last_right_encoder;     // last right encoder reading
 };
 
+struct mb_odometry{
+
+    float x;        //x position from initialization in m
+    float y;        //y position from initialization in m
+    float psi;      //orientation from initialization in rad
+
+    int last_left_encoder;      // last left encoder reading
+    int last_right_encoder;     // last right encoder reading
+};
+
+struct mb_tp{
+
+    double k_p;
+    double k_a;
+    double k_b;
+    int lap;
+    int dest;
+    double x_dest_arr[];
+    double y_dest_arr[];
+    double beta_off[];
+    double epsilon;
+};
+
 typedef struct ctrl_params ctrl_params_t;
 struct ctrl_params{
     float kp;

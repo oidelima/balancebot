@@ -171,10 +171,10 @@ int main(){
 
 
 	printf("initializing odometry...\n");
-	mb_odometry_init(&mb_odometry, 0.1,2.0,-0.1);
+	mb_odometry_init(&mb_odometry, 0.0,0.0,0.0);
 
 	printf("initializing tp...\n");
-	mb_tp_init(&mb_tp, 0.0,0.0,0.0);
+	mb_tp_init(&mb_tp, 0.1,2,-0.1);
 
 	printf("attaching imu interupt...\n");
 	rc_mpu_set_dmp_callback(&balancebot_controller);
@@ -245,38 +245,7 @@ void balancebot_controller(){
 	if(!mb_setpoints.manual_ctl){
 		// Auto Mode
 		//send motor commands
-		double x = mb_odometry.x;
-        double y = mb_odometry.y;
-        double theta = mb_odometry.psi;
-        double x_dest_arr[] = {1, 1, 0, 0};
-        double y_dest_arr[] = {0, 1, 1, 0};
-        double beta_off[] = {0.0, M_PI/2, M_PI, 3*M_PI/2};
-        double dt = 0.01;
-        double epsilon = 0.01;
-        double p, x_dest, y_dest, goal_ang, alpha, beta;
-
-        x_dest = x_dest_arr[mb_tp.dest-1];
-        y_dest = y_dest_arr[mb_tp.dest-1];
-        p = sqrt(pow((x - x_dest),2)+pow((y - y_dest),2));
-        goal_ang = bound(atan2(y_dest - y, x_dest - x), 0 , 2*M_PI);
-        alpha = bound(-theta + goal_ang, -M_PI, M_PI);
-
-        if(-M_PI*1.5/2 < alpha && alpha <= M_PI*1.5/2){
-            mb_setpoints.fwd_velocity = K_p*p;
-        }else{
-            goal_ang = bound(atan2(-y_dest + y, -x_dest + x), 0 , 2*M_PI);
-            alpha = -theta + goal_ang;
-            mb_setpoints.fwd_velocity = -K_p*p;
-        }
-        beta = -theta - alpha + beta_off[dest-1];
-        mb_setpoints.turn_velocity = K_a*alpha + K_b*beta;
-        theta = bound(mb_odometry.psi;, 0, 2*M_PI);
-        x = mb_odometry.x;
-        y = mb_odometry.y;
-
-
-
-        }
+        mb_tp_update(&mb_tp, &mb_state, &mb_setpoints, &mb_odometry);
 
 	}
 
