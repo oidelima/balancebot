@@ -122,7 +122,7 @@ int main(){
 		return -1;
 	}
 
-	rc_nanosleep(2E9); // wait for imu to stabilize
+	rc_nanosleep(3E9); // wait for imu to stabilize
 
 	//initialize state mutex
     pthread_mutex_init(&state_mutex, NULL);
@@ -273,8 +273,7 @@ void balancebot_controller(){
 	*************************************************************/
 	
 	if(POSITION_HOLD){
-		if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
-	
+		// if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
 		mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,-(mb_state.phi-mb_setpoints.phi));
 		mb_setpoints.theta = mb_state.SLC_d2_u;
 	}   
@@ -284,25 +283,19 @@ void balancebot_controller(){
 	* INNER LOOP Body Angle Theta controller
 	*************************************************************/
 
-	// SLC_D1.gain = D1_GAIN * V_NOMINAL/mb_state.vBattery;
 	mb_state.SLC_d1_u = rc_filter_march(&SLC_D1,(mb_state.theta-mb_setpoints.theta));
 
 	/**********************************************************
 	* Steering controller D3
 	***********************************************************/
-
-	if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
+	// if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity * DT/WHEEL_BASE;
 	mb_state.SLC_d3_u = rc_filter_march(&SLC_D3,mb_setpoints.psi - mb_odometry.psi);
-
-	// mb_state.SLC_d1_u = 1;
-	// mb_state.SLC_d3_u = 0;
 
 	mb_state.dutyL = mb_state.SLC_d1_u - mb_state.SLC_d3_u;
 	mb_state.dutyR = mb_state.SLC_d1_u + mb_state.SLC_d3_u;
 
 	mb_motor_set(LEFT_MOTOR, mb_state.dutyL);
 	mb_motor_set(RIGHT_MOTOR, mb_state.dutyR);
-
 
 	// XBEE_getData();
 	// double q_array[4] = {xbeeMsg.qw, xbeeMsg.qx, xbeeMsg.qy, xbeeMsg.qz};
@@ -333,6 +326,10 @@ void* setpoint_control_loop(void* ptr){
 	pthread_mutex_lock(&setpoint_mutex);
 
 	double fwd_input, turn_input;
+	static int sp_loop_id;
+	static int done = 0;
+	static int swtch = 0;
+	static double start_psi, start_phi;
 
 	// setpoints [0 0 0] (theta, phi, psi) for test
 	// mb_setpoints.theta = 0;
@@ -352,20 +349,53 @@ void* setpoint_control_loop(void* ptr){
 				// You may should implement switching between manual and autonomous mode
 				// using channel 5 of the DSM data.
 
-				if(rc_dsm_ch_normalized(ARM_CH)<0.1) mb_setpoints.manual_ctl = 1;
-				else mb_setpoints.manual_ctl =0;
+				if(rc_dsm_ch_normalized(ARM_CH)<0.1){
+					mb_setpoints.manual_ctl = 1;
+					swtch = 0;
+				}
+				else {
+					mb_setpoints.manual_ctl = 0;
+					if(!swtch){
+						start_phi = mb_state.phi;
+						start_psi = mb_state.psi;
+						swtch = 1;
+					}
+				}
 
 				if(!mb_setpoints.manual_ctl){
 				// Auto Mode
 				//send motor commands
 					switch(TASK){
 						case 2:
+							if(mb_state.phi - start_phi >= (4*4)/(WHEEL_DIAMETER/2) || done = 1){
+								mb_setpoints.fwd_velocity = 0.0;
+								mb_setpoints.turn_velocity = 0.0;
+								done = 1;
+							}
+							else mb_setpoints.fwd_velocity = 0.25 * RATE_SENST_FWD;
+
+							if((mb_state.phi - start_phi >= 0.9/(WHEEL_DIAMETER/2)) && (mb_state.phi - start_phi <= 1.1/(WHEEL_DIAMETER/2))){
+								mb_setpoints.turn_velocity = -1.0 * RATE_SENST_TURN;
+							}
+							else mb_setpoints.turn_velocity = 0.0;
 							break;
-						case 3: 
+						case 3:
+							if(mb_state.phi - start_phi >= 11/(WHEEL_DIAMETER/2) || done = 1){
+								mb_setpoints.fwd_velocity = 0.0;
+								// mb_setpoints.theta = 0.0;    		
+								done = 1;
+							}
+							else {
+								mb_setpoints.fwd_velocity = 0.5 * RATE_SENST_FWD;   //adjust normalized fwd velocity based on speed/timing/theta .... 
+								// mb_setpoints.theta = 0.15;			find value for theta to set if u want to use this
+							}
 							break;
 						default:
 							continue;
 					}
+
+					if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
+					if(fabs(mb_setpoints.turn_velocity) > 0.001) mb_setpoints.psi += mb_setpoints.turn_velocity*DT/WHEEL_BASE;
 
 				}
 
@@ -398,6 +428,7 @@ void* setpoint_control_loop(void* ptr){
 
 	 	rc_nanosleep(1E9 / RC_CTL_HZ);
 	}
+	sp_loop_id++;
 	return NULL;
 }
 
