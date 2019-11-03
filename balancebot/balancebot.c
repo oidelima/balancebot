@@ -275,7 +275,7 @@ void balancebot_controller(){
 							/(GEAR_RATIO * ENCODER_RES);
 
 	// mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
-	mb_state.phi = mb_odometry.phi + mb_state.theta;
+	mb_state.phi = mb_odometry.phi/(WHEEL_DIAMETER/2) + mb_state.theta;
 
 	/************************************************************
 	* OUTER LOOP PHI controller D2
@@ -402,11 +402,11 @@ void* setpoint_control_loop(void* ptr){
 										break;
 									case 2:
 										// set phi adding 1m
-										if(fabs(mb_odometry.phi-pre_phi) < 0.9){
+										if((fabs(mb_odometry.phi-pre_phi) < 0.9 )&& fabs(mb_setpoints.phi-(pre_phi + 1)/(WHEEL_DIAMETER/2))<0.1){
 											mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
 										}else{
 											mb_setpoints.fwd_velocity = 0;
-											mb_setpoints.phi = (pre_phi + 1)/WHEEL_DIAMETER; //
+											mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
 											T2_state = 3;
 										}
 										break;
@@ -496,8 +496,9 @@ void* printf_loop(void* ptr){
 			printf(" DSM | SETPOINTS |                            STATES								|            MOCAP            |");
 			printf("\n");
 			printf(" MODE|");
-			printf(" φ_set |");
-			printf(" ψ_set |");
+			printf("  θ_set  |");
+			printf("  φ_set  |");
+			printf("  ψ_set  |");
 			printf("    θ    |");
 			printf("    φ    |");
 			// printf("    ψ    |");
@@ -509,17 +510,17 @@ void* printf_loop(void* ptr){
 			printf("    Y    |");
 			printf("    ψ    |");
 
-			// printf("  err_θ  |");
-			// printf("   D2_u  |");
-			// printf("  err_φ  |");
-			// printf("  θ_set  |");
-			// printf("   D3_u  |");
-			// printf("  err_ψ  |");
+			printf("  err_θ  |");
+			printf("   D2_u  |");
+			printf("  err_φ  |");
+			printf("  θ_set  |");
+			printf("   D3_u  |");
+			printf("  err_ψ  |");
 			printf(" duty_L  |");
 			printf(" duty_R  |");
 
-			printf(" tau_L   | ");
-			printf(" tau_R   |");
+			// printf(" tau_L   | ");
+			// printf(" tau_R   |");
 
 			printf("\n");
 		}
@@ -537,7 +538,7 @@ void* printf_loop(void* ptr){
 			pthread_mutex_lock(&state_mutex);
 			if(mb_setpoints.manual_ctl) printf("  M  |");
 			else printf("  A  |");
-			// printf("%7.3f  |", mb_state.theta);
+			printf("%7.3f  |", mb_setpoints.theta);
 			printf("%7.3f  |", mb_setpoints.phi);
 			printf("%7.3f  |", mb_setpoints.psi);
 			printf("%7.3f  |", mb_state.theta/M_PI*180);
@@ -555,25 +556,17 @@ void* printf_loop(void* ptr){
 			printf("%7.3f  |", mb_odometry.psi);
 
 			// printf("%7.3f  |", mb_state.SLC_d1_u);
-			// printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
-			// printf("%7.3f  |", mb_state.SLC_d2_u);
-			// printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
-			// printf("%7.3f  |", mb_setpoints.theta);
-			// printf("%7.3f  |", mb_state.SLC_d3_u);
-			// printf("%7.3f  |", -(mb_odometry.psi-mb_setpoints.psi));
+			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
+			printf("%7.3f  |", mb_state.SLC_d2_u);
+			printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
+			printf("%7.3f  |", mb_setpoints.theta);
+			printf("%7.3f  |", mb_state.SLC_d3_u);
+			printf("%7.3f  |", -(mb_odometry.psi-mb_setpoints.psi));
 
 			printf("%7.3f  |", mb_state.dutyL);
 			printf("%7.3f  |", mb_state.dutyR);
 			// printf("%7.3f  |", mb_state.left_torque);
 			// printf("%7.3f  |", mb_state.right_torque);
-
-             printf("%7.3f  |", mb_state.opti_x);
-             printf("%7.3f  |", mb_state.opti_y);
-             printf("%7.3f  |", mb_state.opti_yaw);
-
-             printf("%7.3f  |", mb_odometry.x);
-             printf("%7.3f  |", mb_odometry.y);
-             printf("%7.3f  |", mb_odometry.psi*180/M_PI);
 
 
 			 //Logger
