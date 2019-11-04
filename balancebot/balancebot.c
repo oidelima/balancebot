@@ -150,7 +150,7 @@ int main(){
 			return -1;
 	}
 	SLC_D2.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2, -0.3, 0.3); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_saturation(&SLC_D2, -0.1, 0.1); 			//need to find the limits for theta - now +/- 30 deg
 	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
 
 	if(rc_filter_pid(&SLC_D3, steering.kp, steering.ki, steering.kd, steering.tf, DT)){
@@ -274,8 +274,9 @@ void balancebot_controller(){
 	mb_state.left_w_angle = (mb_state.left_encoder * 2.0 * M_PI) \
 							/(GEAR_RATIO * ENCODER_RES);
 
-	// mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
-	mb_state.phi = mb_odometry.phi/(WHEEL_DIAMETER/2) + mb_state.theta;
+	mb_state.phi = ((mb_state.left_w_angle+mb_state.right_w_angle)/2) + mb_state.theta;
+	// mb_state.phi = mb_odometry.phi/(WHEEL_DIAMETER/2) + mb_state.theta;
+	// mb_state.phi = mb_odometry.phi/(WHEEL_DIAMETER/2);
 
 	/************************************************************
 	* OUTER LOOP PHI controller D2
@@ -386,7 +387,7 @@ void* setpoint_control_loop(void* ptr){
 										break;
 									case 1:
 										// check turn done?
-										if(fabs(mb_odometry.psi-mb_setpoints.psi)<0.01){
+										if(fabs(mb_odometry.psi-mb_setpoints.psi) < 0.02){
 											T2_turn += 1;
 											// check task done?
 											if(T2_turn == 4){
@@ -397,25 +398,28 @@ void* setpoint_control_loop(void* ptr){
 												}
 											}
 											// into state2
+											printf("\n~~~Case 1 done~~~~\n");
 											T2_state = 2;
 										}
 										break;
 									case 2:
 										// set phi adding 1m
-										if((fabs(mb_odometry.phi-pre_phi) < 0.9 )){
-											// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
-											mb_setpoints.fwd_velocity = 0.1*RATE_SENST_FWD;
-										}else{
+										// if(fabs(mb_odometry.phi-pre_phi) < 0.9  && fabs(mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)<0.1)){
+										// 	// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+										// 	mb_setpoints.fwd_velocity = 0.1*RATE_SENST_FWD;
+										// }else{
 											mb_setpoints.fwd_velocity = 0;
-											mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
+											mb_setpoints.phi = (pre_phi + 0.5)/(WHEEL_DIAMETER/2); //
+											pre_phi = mb_setpoints.phi*(WHEEL_DIAMETER/2);
 											T2_state = 3;
-										}
+										// }
 										break;
 									case 3:
 										// check finish straight?
-										printf("TASK 2: Case 3\n");
+										// printf("TASK 2: Case 3\n");
 
-										if(fabs(mb_odometry.phi-mb_setpoints.phi) < 0.01){
+										if(fabs(mb_odometry.phi/(WHEEL_DIAMETER/2)-mb_setpoints.phi) < 0.05){
+											printf("\n~~~Case 3 done~~~~\n");
 											T2_state = 0;
 										}
 										break;
@@ -501,17 +505,18 @@ void* printf_loop(void* ptr){
 			printf(" MODE|");
 			printf("  θ_set  |");
 			printf("  φ_set  |");
-			printf("  ψ_set  |");
+			printf("  ψ_set  ||  ||");
+
 			printf("    θ    |");
-			printf("    φ    |");
-			// printf("    ψ    |");
+			printf("    φ    |");			
 			// printf("  L Enc  |");
 			// printf("  R Enc  |");
-			printf("  L phi  |");
-			printf("  R phi  |");
-			printf("    X    |");
-			printf("    Y    |");
-			printf("    ψ    |");
+			// printf("  L phi  |");
+			// printf("  R phi  |");
+			// printf("    X    |");
+			// printf("    Y    |");
+			// printf("  ODO φ  |");
+			printf("    ψ    ||  ||");
 
 			printf("  err_θ  |");
 			printf("   D2_u  |");
@@ -541,25 +546,24 @@ void* printf_loop(void* ptr){
 			pthread_mutex_lock(&state_mutex);
 			if(mb_setpoints.manual_ctl) printf("  M  |");
 			else printf("  A  |");
-			printf("%7.3f  |", mb_setpoints.theta);
+			printf("%7.3f  |", mb_setpoints.theta/M_PI*180);
 			printf("%7.3f  |", mb_setpoints.phi);
-			printf("%7.3f  |", mb_setpoints.psi);
+			printf("%7.3f  ||  ||", mb_setpoints.psi);
+
 			printf("%7.3f  |", mb_state.theta/M_PI*180);
 			printf("%7.3f  |", mb_state.phi);
 			// printf("%7.3f  |", mb_odometry.psi);
-
 			// printf("%7d  |", mb_state.left_encoder);
 			// printf("%7d  |", mb_state.right_encoder);
-			printf("%7.3f  |", mb_state.left_w_angle);
-			printf("%7.3f  |", mb_state.right_w_angle);
-
-
-			printf("%7.3f  |", mb_odometry.x);
-			printf("%7.3f  |", mb_odometry.y);
-			printf("%7.3f  |", mb_odometry.psi);
+			// printf("%7.3f  |", mb_state.left_w_angle);
+			// printf("%7.3f  |", mb_state.right_w_angle);
+			// printf("%7.3f  |", mb_odometry.x);
+			// printf("%7.3f  |", mb_odometry.y);
+			// printf("%7.3f  |", mb_odometry.phi/(WHEEL_DIAMETER/2));
+			printf("%7.3f  ||  ||", mb_odometry.psi);
 
 			// printf("%7.3f  |", mb_state.SLC_d1_u);
-			printf("%7.3f  |", mb_state.theta-mb_setpoints.theta);
+			printf("%7.3f  |", (mb_state.theta-mb_setpoints.theta)/M_PI*180);
 			printf("%7.3f  |", mb_state.SLC_d2_u);
 			printf("%7.3f  |", -(mb_state.phi-mb_setpoints.phi));
 			printf("%7.3f  |", mb_setpoints.theta);

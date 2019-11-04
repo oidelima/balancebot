@@ -29,7 +29,7 @@
 #define WHEEL_BASE                  0.208 // wheel separation distance in meters
 #define FWD_VEL_SENSITIVITY       0.1 // sensitivity of RC control for moving
 #define TURN_VEL_SENSITIVITY      0.1 // sensitivity of RC control for turning
-#define SAMPLE_RATE_HZ            100 // main filter and control loop speed
+#define SAMPLE_RATE_HZ            200 // main filter and control loop speed
 #define DT                       0.01 // 1/sample_rate
 #define PRINTF_HZ                  10 // rate of print loop
 #define RC_CTL_HZ                  25 // rate of RC data update
