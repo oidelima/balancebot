@@ -24,7 +24,8 @@
 
 #include <rc/math.h>
 rc_filter_t SLC_D1 = RC_FILTER_INITIALIZER;  //body angle controller
-rc_filter_t SLC_D2 = RC_FILTER_INITIALIZER;  //position controller 
+rc_filter_t SLC_D2 = RC_FILTER_INITIALIZER;  //position controller
+rc_filter_t SLC_D2_i = RC_FILTER_INITIALIZER; //position integral control
 rc_filter_t SLC_D3 = RC_FILTER_INITIALIZER;	 //steering controller
 
 rc_filter_t le_lpf = RC_FILTER_INITIALIZER;
@@ -145,13 +146,21 @@ int main(){
 	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
 	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
 									
-	if(rc_filter_pid(&SLC_D2, position.kp, position.ki, position.kd, position.tf, DT)){
+	if(rc_filter_pid(&SLC_D2, position.kp, 0.0, position.kd, position.tf, DT)){
 			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
 			return -1;
 	}
 	SLC_D2.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2, -0.1, 0.1); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_saturation(&SLC_D2, -0.15, 0.15); 			//need to find the limits for theta - now +/- 30 deg
 	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
+
+	if(rc_filter_pid(&SLC_D2_i, 0.0, position.ki, 0.0, position.tf, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D2_i.gain = D2_GAIN;
+	rc_filter_enable_saturation(&SLC_D2_i, -0.05, 0.05); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_soft_start(&SLC_D2_i, SOFT_START_TIME/DT);
 
 	if(rc_filter_pid(&SLC_D3, steering.kp, steering.ki, steering.kd, steering.tf, DT)){
 			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
@@ -168,11 +177,13 @@ int main(){
 	// Prefill filters
 	rc_filter_prefill_inputs(&SLC_D1, 0.0);
 	rc_filter_prefill_inputs(&SLC_D2, 0.0);
+	rc_filter_prefill_inputs(&SLC_D2_i, 0.0);
 	rc_filter_prefill_inputs(&SLC_D3, 0.0);
 	rc_filter_prefill_inputs(&le_lpf, 0.0);
 	rc_filter_prefill_inputs(&re_lpf, 0.0);
 	rc_filter_prefill_outputs(&SLC_D1, 0.0);
 	rc_filter_prefill_outputs(&SLC_D2, 0.0);
+	rc_filter_prefill_outputs(&SLC_D2_i, 0.0);
 	rc_filter_prefill_outputs(&SLC_D3, 0.0);
 	rc_filter_prefill_outputs(&le_lpf, 0.0);
 	rc_filter_prefill_outputs(&re_lpf, 0.0);
@@ -283,9 +294,16 @@ void balancebot_controller(){
 	*************************************************************/
 	
 	if(POSITION_HOLD){
-		if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
+		// if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
+		
+		// reset integral control each time setpoint is reached
+		if (fabs(mb_state.phi-mb_setpoints.phi) < 0.01){
+			rc_filter_reset(&SLC_D2_i);
+		}
+
+		mb_state.SLC_d2_i_u = rc_filter_march(&SLC_D2_i,-(mb_state.phi-mb_setpoints.phi));
 		mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,-(mb_state.phi-mb_setpoints.phi));
-		mb_setpoints.theta = mb_state.SLC_d2_u;
+		mb_setpoints.theta = mb_state.SLC_d2_u + mb_state.SLC_d2_i_u;
 	}   
 	else mb_setpoints.theta = 0.0;
 

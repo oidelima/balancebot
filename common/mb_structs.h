@@ -33,6 +33,7 @@ struct mb_state{
 
     float SLC_d1_u;
     float SLC_d2_u;
+    float SLC_d2_i_u;
     float SLC_d3_u;
     
 };
