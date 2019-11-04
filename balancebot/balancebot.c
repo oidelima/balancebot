@@ -402,7 +402,7 @@ void* setpoint_control_loop(void* ptr){
 								switch(T2_state){
 									case 0:
 										// set psi setpoint +90
-										mb_setpoints.psi += M_PI/2;
+										mb_setpoints.psi -= M_PI/2;
 										T2_state = 1;
 										break;
 									case 1:
@@ -424,15 +424,15 @@ void* setpoint_control_loop(void* ptr){
 										break;
 									case 2:
 										// set phi adding 1m
-										// if(fabs(mb_odometry.phi-pre_phi) < 0.9  && fabs(mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)<0.1)){
-										// 	// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
-										// 	mb_setpoints.fwd_velocity = 0.1*RATE_SENST_FWD;
-										// }else{
+										if(fabs(mb_odometry.phi-pre_phi) < 0.9  && fabs(mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)<0.1)){
+											// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+											mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+										}else{
 											mb_setpoints.fwd_velocity = 0;
 											mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
 											pre_phi = mb_setpoints.phi*(WHEEL_DIAMETER/2);
 											T2_state = 3;
-										// }
+										}
 										break;
 									case 3:
 										// check finish straight?
@@ -448,7 +448,7 @@ void* setpoint_control_loop(void* ptr){
 							break;
 
 						case 3:
-							if(mb_state.phi - start_phi >= 11/(WHEEL_DIAMETER/2) || done == 1){
+							if(mb_state.phi - start_phi >= 11.2/(WHEEL_DIAMETER/2) || done == 1){
 								mb_setpoints.fwd_velocity = 0.0;
 								// mb_setpoints.theta = 0.0;    		
 								done = 1;
@@ -519,7 +519,7 @@ void* printf_loop(void* ptr){
 	strcat(fileName, "_log.csv");
 	FILE* fp = fopen(fileName, "a");
 	int num_var = 25;
-	char * headers[] = {"MODE", "Phi set", "Psi set", "Theta", "Phi","Psi",  "Left encoder", "Right encoder", "Left w angle", "Right w angle",
+	/*char * headers[] = {"MODE", "Phi set", "Psi set", "Theta", "Phi","Psi",  "Left encoder", "Right encoder", "Left w angle", "Right w angle",
         "X", "Y","Yaw",  "Error theta", "D2_u","Error phi","Theta set","D3_u" , "Error phi", "Duty L", "Duty R"};
 
   	//Printing headers to csv
@@ -529,8 +529,8 @@ void* printf_loop(void* ptr){
 	  	}
 		fprintf (fp, "%s", headers[j]);
 		}
-	  fputs("\r\n", fp);
-    }
+	fputs("\r\n", fp);*/
+    
 
 
 	while(rc_get_state()!=EXITING){
