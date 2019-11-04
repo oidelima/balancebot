@@ -19,6 +19,8 @@
 #include <rc/pthread.h>
 #include <rc/encoder_eqep.h>
 #include <rc/time.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include "balancebot.h"
 
@@ -511,8 +513,26 @@ void* setpoint_control_loop(void* ptr){
 *******************************************************************************/
 void* printf_loop(void* ptr){
 	rc_state_t last_state, new_state; // keep track of last state
-	char fileName[] = "log.csv";
+
+	char fileName[45];
+	sprintf(fileName, "%d", (int)time(NULL));
+	strcat(fileName, "_log.csv");
 	FILE* fp = fopen(fileName, "a");
+	int num_var = 25;
+	char * headers[] = {"MODE", "Phi set", "Psi set", "Theta", "Phi","Psi",  "Left encoder", "Right encoder", "Left w angle", "Right w angle",
+        "X", "Y","Yaw",  "Error theta", "D2_u","Error phi","Theta set","D3_u" , "Error phi", "Duty L", "Duty R"};
+
+  	//Printing headers to csv
+	  for (int j = 0; j < num_var; j++){
+		if (j > 0) {
+	    	fputc(',', fp);
+	  	}
+		fprintf (fp, "%s", headers[j]);
+		}
+	  fputs("\r\n", fp);
+    }
+
+
 	while(rc_get_state()!=EXITING){
 		new_state = rc_get_state();
 		// check if this is the first time since being paused
@@ -596,8 +616,7 @@ void* printf_loop(void* ptr){
 
 			 //Logger
 
-		    
-		    int num_var = 25;
+
             double readings[] = {mb_setpoints.manual_ctl, mb_setpoints.phi, mb_setpoints.psi, mb_state.theta, mb_state.phi, mb_odometry.psi, mb_state.left_encoder, mb_state.right_encoder, mb_state.left_w_angle,mb_state.right_w_angle,
                  mb_state.opti_x, mb_state.opti_y, mb_state.opti_yaw, mb_state.theta-mb_setpoints.theta, mb_state.SLC_d2_u, -(mb_state.phi-mb_setpoints.phi),
              	mb_setpoints.theta, mb_state.SLC_d3_u, -(mb_odometry.psi-mb_setpoints.psi), mb_state.dutyL, mb_state.dutyR, mb_odometry.x, mb_odometry.y, mb_odometry.psi, mb_state.gyro_z};
