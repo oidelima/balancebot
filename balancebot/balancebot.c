@@ -409,7 +409,7 @@ void* setpoint_control_loop(void* ptr){
 										// 	mb_setpoints.fwd_velocity = 0.1*RATE_SENST_FWD;
 										// }else{
 											mb_setpoints.fwd_velocity = 0;
-											mb_setpoints.phi = (pre_phi + 0.5)/(WHEEL_DIAMETER/2); //
+											mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
 											pre_phi = mb_setpoints.phi*(WHEEL_DIAMETER/2);
 											T2_state = 3;
 										// }

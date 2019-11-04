@@ -18,8 +18,8 @@
 #include "../xbee_serial/xbee_receive.h"
 
 #define BALANCE_OFFSET      1.1*M_PI/180
-#define SOFT_START_TIME     0.005
-#define DT                  0.005
+#define SOFT_START_TIME     0.01
+#define DT                  0.01
 #define V_NOMINAL           12
 #define BATTERY_CHECK_HZ    100
 #define POSITION_HOLD       1
