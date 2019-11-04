@@ -408,7 +408,7 @@ void* setpoint_control_loop(void* ptr){
 										if(fabs(mb_odometry.psi-mb_setpoints.psi) < 0.02){
 											T2_turn += 1;
 											// check task done?
-											if(T2_turn == 4){
+											if(T2_turn == 1){
 												T2_round += 1;
 												T2_turn = 0;
 												if(T2_round == 4){
@@ -416,7 +416,7 @@ void* setpoint_control_loop(void* ptr){
 												}
 											}
 											// into state2
-											printf("\n~~~Case 1 done~~~~\n");
+											// printf("\n~~~Case 1 done~~~~\n");
 											T2_state = 2;
 										}
 										break;
@@ -437,7 +437,7 @@ void* setpoint_control_loop(void* ptr){
 										// printf("TASK 2: Case 3\n");
 
 										if(fabs(mb_odometry.phi/(WHEEL_DIAMETER/2)-mb_setpoints.phi) < 0.05){
-											printf("\n~~~Case 3 done~~~~\n");
+											// printf("\n~~~Case 3 done~~~~\n");
 											T2_state = 0;
 										}
 										break;
