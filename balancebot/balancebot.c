@@ -153,7 +153,7 @@ int main(){
 			return -1;
 	}
 	SLC_D2.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2, -0.15, 0.15); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_saturation(&SLC_D2, -0.15, 0.15); 			//need to find the limits for theta - now +/- ~ 8.5 deg
 	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
 
 	if(rc_filter_pid(&SLC_D2_i, 0.0, position.ki, 0.0, position.tf, DT)){
@@ -161,7 +161,7 @@ int main(){
 			return -1;
 	}
 	SLC_D2_i.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2_i, -0.05, 0.05); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_saturation(&SLC_D2_i, -0.01, 0.01); 			
 	rc_filter_enable_soft_start(&SLC_D2_i, SOFT_START_TIME/DT);
 
 	if(rc_filter_pid(&SLC_D3, steering.kp, steering.ki, steering.kd, steering.tf, DT)){
@@ -299,9 +299,9 @@ void balancebot_controller(){
 		// if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);  
 		
 		// reset integral control each time setpoint is reached
-		if (fabs(mb_state.phi-mb_setpoints.phi) < 0.01){
-			rc_filter_reset(&SLC_D2_i);
-		}
+		// if (fabs(mb_state.phi-mb_setpoints.phi) < 0.01){
+		// 	rc_filter_reset(&SLC_D2_i);
+		// }
 
 		mb_state.SLC_d2_i_u = rc_filter_march(&SLC_D2_i,-(mb_state.phi-mb_setpoints.phi));
 		mb_state.SLC_d2_u = rc_filter_march(&SLC_D2,-(mb_state.phi-mb_setpoints.phi));
@@ -362,7 +362,9 @@ void* setpoint_control_loop(void* ptr){
 	static int swtch = 0;
 	static double start_psi, start_phi, start_x, start_y;
 
-	static int T2_turn, T2_round;
+	const double dist2r = 1.0/(WHEEL_DIAMETER/2);
+
+	static int T2_turn, T2_round = 0;
 	static int T2_state = 0; // 0 for turning, 1 for trun done, 2 for going straight, 3 for straight done
 	static double pre_phi;
 
@@ -449,38 +451,40 @@ void* setpoint_control_loop(void* ptr){
 
 						case 2:
 
-							if(mb_state.phi - start_phi >= 4.0*4/(WHEEL_DIAMETER/2) || done == 1){
+							T2_round = (int)floor(fmod((mb_state.phi - start_phi),3.5*dist2r));
+
+							if(mb_state.phi - start_phi >= 4.0*4*dist2r || done == 1){
 								mb_setpoints.fwd_velocity = 0.0;
-								// mb_setpoints.theta = 0.0;    		
+								mb_setpoints.turn_velocity = 0.0;   		
 								done = 1;
+								continue;
 							}
+
 							else{
-								mb_setpoints.fwd_velocity = 0.5 * RATE_SENST_FWD;   //adjust normalized fwd velocity based on speed/timing/theta .... 
-								// mb_setpoints.theta = 0.15;			find value for theta to set if u want to use this
-							}
+								mb_setpoints.fwd_velocity = 1.0*RATE_SENST_FWD;   //adjust normalized fwd velocity based on speed/timing/theta ....
 
-							T2_round = 0;
-							
-
-							if(fmod((mb_state.phi - start_phi),4) >= 0.9/(WHEEL_DIAMETER/2) &&  fmod((mb_state.phi - start_phi),4) <= 1.1/(WHEEL_DIAMETER/2)){
-								if(mb_odometry.psi - start_psi < 90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+								if(fmod((mb_state.phi - start_phi),4.0*dist2r) >= 0.9*dist2r &&  fmod((mb_state.phi - start_phi),4.0*dist2r) <= 1.1*dist2r){
+									if(mb_odometry.psi - start_psi < ((T2_round+1)*360+90)*M_PI/180) 
+										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+									else mb_setpoints.turn_velocity = 0.0;
+								}
+								else if(fmod((mb_state.phi - start_phi),4.0*dist2r) >= 1.9*dist2r &&  fmod((mb_state.phi - start_phi),4.0*dist2r) <= 2.1*dist2r){
+									if(mb_odometry.psi - start_psi < ((T2_round+1)*360+180)*M_PI/180) 
+										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+									else mb_setpoints.turn_velocity = 0.0;
+								}
+								else if(fmod((mb_state.phi - start_phi),4.0*dist2r) >= 2.9*dist2r &&  fmod((mb_state.phi - start_phi),4.0*dist2r) <= 3.1*dist2r){
+									if(mb_odometry.psi - start_psi <((T2_round+1)*360+270)*M_PI/180) 
+										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+									else mb_setpoints.turn_velocity = 0.0;
+								}
+								else if((fmod((mb_state.phi - start_phi),4.0*dist2r) >= 3.9*dist2r || fmod((mb_state.phi - start_phi),4.0*dist2r) <= 0.1*dist2r) && T2_round !=0){
+									if(mb_odometry.psi - start_psi < (T2_round*360)*M_PI/180) 
+										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+									else mb_setpoints.turn_velocity = 0.0;
+								}
 								else mb_setpoints.turn_velocity = 0.0;
 							}
-							else if(fmod((mb_state.phi - start_phi),4) >= 1.9/(WHEEL_DIAMETER/2) &&  fmod((mb_state.phi - start_phi),4) <= 2.1/(WHEEL_DIAMETER/2)){
-								if(mb_odometry.psi - start_psi < 2*90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
-								else mb_setpoints.turn_velocity = 0.0;
-							}
-							else if(fmod((mb_state.phi - start_phi),4) >= 2.9/(WHEEL_DIAMETER/2) &&  fmod((mb_state.phi - start_phi),4) <= 3.1/(WHEEL_DIAMETER/2)){
-								if(mb_odometry.psi - start_psi < 3*90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
-								else mb_setpoints.turn_velocity = 0.0;
-							}
-							else if((fmod((mb_state.phi - start_phi),4) >= 3.9/(WHEEL_DIAMETER/2) || fmod((mb_state.phi - start_phi),4) <= 0.1/(WHEEL_DIAMETER/2)) && T2_round !=0){
-								if(mb_odometry.psi - start_psi < 4*90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
-								else mb_setpoints.turn_velocity = 0.0;
-							}
-							else mb_setpoints.turn_velocity = 0.0;
-
-							if mb_state.phi - start_phi >= 4.0*4/(WHEEL_DIAMETER/2)
 
 
 						case 3:
