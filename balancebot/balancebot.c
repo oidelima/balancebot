@@ -307,7 +307,7 @@ void* setpoint_control_loop(void* ptr){
 
 	static int T2_turn, T2_round;
 	static int T2_state = 0; // 0 for turning, 1 for trun done, 2 for going straight, 3 for straight done
-	static double pre_phi;
+	static double pre_phi, pre_psi;
 
 	// unlock setpoint mutex
 	pthread_mutex_unlock(&setpoint_mutex);
@@ -368,6 +368,7 @@ void* setpoint_control_loop(void* ptr){
 											if(T2_round == 4){
 												mb_setpoints.fwd_velocity = 0;
 												mb_setpoints.turn_velocity = 0;
+												done = 1;
 											}
 										}
 										T2_state = 2;
@@ -659,7 +660,7 @@ void* __battery_checker(void* ptr)
 }
 
 
-void load_cfg_file(){
+int load_cfg_file(){
 		//attach controller function to IMU interrupt
 	printf("initializing controllers...\n");
 	mb_controller_init();
@@ -723,4 +724,6 @@ void load_cfg_file(){
 	
 	printf("Steering controller SLC_D3:\n");
 	rc_filter_print(SLC_D3);
+
+	return 1;
 }
