@@ -26,12 +26,12 @@
 #define GEAR_RATIO                  20.4 // gear ratio of motor
 #define ENCODER_RES                 48 // encoder counts per motor shaft revolution
 
-// #define WHEEL_DIAMETER              0.083 // diameter of wheel in meters
-#define WHEEL_DIAMETER              0.08405 // diameter of wheel in meters
+#define WHEEL_DIAMETER              0.083 // diameter of wheel in meters
+// #define WHEEL_DIAMETER              0.08405 // diameter of wheel in meters
 #define WHEEL_L_DIA                 0.0841
 #define WHEEL_R_DIA                 0.0840
-// #define WHEEL_BASE                  0.208 // wheel separation distance in meters
-#define WHEEL_BASE                  0.2145
+#define WHEEL_BASE                  0.208 // wheel separation distance in meters
+// #define WHEEL_BASE                  0.2145
 
 #define FWD_VEL_SENSITIVITY       0.1 // sensitivity of RC control for moving
 #define TURN_VEL_SENSITIVITY      0.1 // sensitivity of RC control for turning

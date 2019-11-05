@@ -306,7 +306,7 @@ void* setpoint_control_loop(void* ptr){
 	static double start_psi, start_phi, start_x, start_y;
 
 	static int T2_turn, T2_round;
-	static int T2_state = 0; // 0 for turning, 1 for trun done, 2 for going straight, 3 for straight done
+	static int T2_state = 2; // 0 for turning, 1 for trun done, 2 for going straight, 3 for straight done
 	static double pre_phi, pre_psi;
 
 	// unlock setpoint mutex
@@ -395,7 +395,7 @@ void* setpoint_control_loop(void* ptr){
 							switch(T2_state){
 								case 0:
 									// set psi setpoint +90
-									mb_setpoints.psi -= M_PI/2;
+									mb_setpoints.psi += M_PI/2;
 									T2_state = 1;
 									break;
 								case 1:
@@ -406,18 +406,19 @@ void* setpoint_control_loop(void* ptr){
 										if(T2_turn == 1){
 											T2_round += 1;
 											T2_turn = 0;
-											if(T2_round == 4){
+											if(T2_round == 1){
 												done = 1;
 											}
 										}
 										// into state2
-										// printf("\n~~~Case 1 done~~~~\n");
+										printf("\n~~~Case 1 done~~~~\n");
 										T2_state = 2;
 									}
 									break;
 								case 2:
 									// set phi adding 1m
-									if(fabs(mb_odometry.phi-pre_phi) < 0.9  && (mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)) < 0){
+									// if(fabs(mb_odometry.phi-pre_phi) < 0.9  && (mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)) < 0){
+									if(fabs(mb_odometry.phi-pre_phi) < 0.9  && fabs(mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)) < 0.1){
 										// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
 										mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
 									}else{
@@ -425,14 +426,14 @@ void* setpoint_control_loop(void* ptr){
 										mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
 										pre_phi = mb_setpoints.phi*(WHEEL_DIAMETER/2);
 										T2_state = 3;
-									}
+									}printf("\n~~~Case 1 done~~~~\n");
 									break;
 								case 3:
 									// check finish straight?
 									// printf("TASK 2: Case 3\n");
 
 									if(fabs(mb_odometry.phi/(WHEEL_DIAMETER/2)-mb_setpoints.phi) < 0.05){
-										// printf("\n~~~Case 3 done~~~~\n");
+										printf("\n~~~Case 3 done~~~~\n");
 										T2_state = 0;
 									}
 									break;
