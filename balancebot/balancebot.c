@@ -480,7 +480,7 @@ void* setpoint_control_loop(void* ptr){
 			}
 		}
 		else if(rc_dsm_is_connection_active()==0){
-			// mb_setpoints.theta = 0;
+			mb_setpoints.theta = 0;
 			mb_setpoints.fwd_velocity = 0;
 			mb_setpoints.turn_velocity = 0;
 			mb_setpoints.manual_ctl = 1;
