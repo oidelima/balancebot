@@ -212,7 +212,7 @@ int main(){
 
 
 	printf("initializing odometry...\n");
-	mb_odometry_init(&mb_odometry, 0.1,2.0,-0.1);
+	mb_odometry_init(&mb_odometry, 0.0,0.0,0.0);
 
 
 
@@ -397,7 +397,7 @@ void* setpoint_control_loop(void* ptr){
 				// Auto Mode
 				//send motor commands
 					switch(TASK){
-						case 2:
+						case 1:
 							if(done == 0){
 								switch(T2_state){
 									case 0:
@@ -446,6 +446,42 @@ void* setpoint_control_loop(void* ptr){
 								}
 							}
 							break;
+
+						case 2:
+
+							if(mb_state.phi - start_phi >= 4.0*4/(WHEEL_DIAMETER/2) || done == 1){
+								mb_setpoints.fwd_velocity = 0.0;
+								// mb_setpoints.theta = 0.0;    		
+								done = 1;
+							}
+							else{
+								mb_setpoints.fwd_velocity = 0.5 * RATE_SENST_FWD;   //adjust normalized fwd velocity based on speed/timing/theta .... 
+								// mb_setpoints.theta = 0.15;			find value for theta to set if u want to use this
+							}
+
+							T2_round = 0;
+							
+
+							if(fmod((mb_state.phi - start_phi),4) >= 0.9/(WHEEL_DIAMETER/2) &&  fmod((mb_state.phi - start_phi),4) <= 1.1/(WHEEL_DIAMETER/2)){
+								if(mb_odometry.psi - start_psi < 90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+								else mb_setpoints.turn_velocity = 0.0;
+							}
+							else if(fmod((mb_state.phi - start_phi),4) >= 1.9/(WHEEL_DIAMETER/2) &&  fmod((mb_state.phi - start_phi),4) <= 2.1/(WHEEL_DIAMETER/2)){
+								if(mb_odometry.psi - start_psi < 2*90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+								else mb_setpoints.turn_velocity = 0.0;
+							}
+							else if(fmod((mb_state.phi - start_phi),4) >= 2.9/(WHEEL_DIAMETER/2) &&  fmod((mb_state.phi - start_phi),4) <= 3.1/(WHEEL_DIAMETER/2)){
+								if(mb_odometry.psi - start_psi < 3*90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+								else mb_setpoints.turn_velocity = 0.0;
+							}
+							else if((fmod((mb_state.phi - start_phi),4) >= 3.9/(WHEEL_DIAMETER/2) || fmod((mb_state.phi - start_phi),4) <= 0.1/(WHEEL_DIAMETER/2)) && T2_round !=0){
+								if(mb_odometry.psi - start_psi < 4*90*M_PI/180) mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
+								else mb_setpoints.turn_velocity = 0.0;
+							}
+							else mb_setpoints.turn_velocity = 0.0;
+
+							if mb_state.phi - start_phi >= 4.0*4/(WHEEL_DIAMETER/2)
+
 
 						case 3:
 							if(mb_state.phi - start_phi >= 11.2/(WHEEL_DIAMETER/2) || done == 1){
