@@ -136,69 +136,12 @@ int main(){
     pthread_mutex_init(&state_mutex, NULL);
     pthread_mutex_init(&setpoint_mutex, NULL);
 
+
+	// TODO:
 	//attach controller function to IMU interrupt
-	printf("initializing controllers...\n");
-	mb_controller_init();
-									
-	if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
-			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
-			return -1;
-	}
-	SLC_D1.gain = D1_GAIN;
-	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
-	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
-									
-	if(rc_filter_pid(&SLC_D2, position.kp, 0.0, position.kd, position.tf, DT)){
-			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
-			return -1;
-	}
-	SLC_D2.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2, -0.15, 0.15); 			//need to find the limits for theta - now +/- 30 deg
-	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
-
-	if(rc_filter_pid(&SLC_D2_i, 0.0, position.ki, 0.0, position.tf, DT)){
-			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
-			return -1;
-	}
-	SLC_D2_i.gain = D2_GAIN;
-	rc_filter_enable_saturation(&SLC_D2_i, -0.05, 0.05); 			//need to find the limits for theta - now +/- 30 deg
-	rc_filter_enable_soft_start(&SLC_D2_i, SOFT_START_TIME/DT);
-
-	if(rc_filter_pid(&SLC_D3, steering.kp, steering.ki, steering.kd, steering.tf, DT)){
-			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
-			return -1;
-	}
-	SLC_D3.gain = D3_GAIN;
-	rc_filter_enable_saturation(&SLC_D3, -1.0, 1.0); 			
-	rc_filter_enable_soft_start(&SLC_D3, SOFT_START_TIME/DT);
-
-	// Initialize LPFs for encoders
-	rc_filter_first_order_lowpass(&le_lpf, DT, TIME_CONSTANT);
-	rc_filter_first_order_lowpass(&re_lpf, DT, TIME_CONSTANT);
-
-	// Prefill filters
-	rc_filter_prefill_inputs(&SLC_D1, 0.0);
-	rc_filter_prefill_inputs(&SLC_D2, 0.0);
-	rc_filter_prefill_inputs(&SLC_D2_i, 0.0);
-	rc_filter_prefill_inputs(&SLC_D3, 0.0);
-	rc_filter_prefill_inputs(&le_lpf, 0.0);
-	rc_filter_prefill_inputs(&re_lpf, 0.0);
-	rc_filter_prefill_outputs(&SLC_D1, 0.0);
-	rc_filter_prefill_outputs(&SLC_D2, 0.0);
-	rc_filter_prefill_outputs(&SLC_D2_i, 0.0);
-	rc_filter_prefill_outputs(&SLC_D3, 0.0);
-	rc_filter_prefill_outputs(&le_lpf, 0.0);
-	rc_filter_prefill_outputs(&re_lpf, 0.0);
+	load_cfg_file();
 
 
-	printf("Inner Loop controller SLC_D1:\n");
-	rc_filter_print(SLC_D1);
-
-	printf("Outer Loop position controller SLC_D2:\n");
-	rc_filter_print(SLC_D2);
-	
-	printf("Steering controller SLC_D3:\n");
-	rc_filter_print(SLC_D3);
 
 	printf("initializing motors...\n");
 	mb_motor_init();
@@ -212,7 +155,7 @@ int main(){
 
 
 	printf("initializing odometry...\n");
-	mb_odometry_init(&mb_odometry, 0.1,2.0,-0.1);
+	mb_odometry_init(&mb_odometry, 0,0,0);
 
 
 
@@ -371,123 +314,173 @@ void* setpoint_control_loop(void* ptr){
 
 	while(1){
 		if(rc_dsm_is_new_data()){
-				// TODO: Handle the DSM data from the Spektrum radio reciever
-				// You may should implement switching between manual and autonomous mode
-				// using channel 5 of the DSM data.
+			// TODO: Handle the DSM data from the Spektrum radio reciever
+			// You may should implement switching between manual and autonomous mode
+			// using channel 5 of the DSM data.
 
-				if(rc_dsm_ch_normalized(ARM_CH)<0.1){
-					mb_setpoints.manual_ctl = 1;
-					swtch = 0;
+			if(rc_dsm_ch_normalized(ARM_CH)<0.1){
+				mb_setpoints.manual_ctl = 1;
+				if(swtch){
+					load_cfg_file();
+
+					mb_setpoints.theta = 0;
+					mb_setpoints.phi = 0;
+					mb_setpoints.psi = 0;
+
+					mb_odometry_init(&mb_odometry,0,0,0);
 				}
-				else {
-					mb_setpoints.manual_ctl = 0;
-					if(!swtch){
-						start_phi = mb_state.phi;
-						start_psi = mb_odometry.psi;
-						start_x = mb_odometry.x;
-						start_y = mb_odometry.y;
-						pre_phi = mb_odometry.phi;
+				swtch = 0;
+			}
+			else {
+				mb_setpoints.manual_ctl = 0;
+				if(!swtch){
+					start_phi = mb_state.phi;
+					start_psi = mb_odometry.psi;
+					start_x = mb_odometry.x;
+					start_y = mb_odometry.y;
+					
+					pre_phi = mb_odometry.phi;
+					pre_psi = mb_odometry.psi;
 
-						T2_state = 2;
-						swtch = 1;
-					}
+					T2_state = 2;
+					swtch = 1;
 				}
+			}
 
-				if(!mb_setpoints.manual_ctl){
-				// Auto Mode
-				//send motor commands
-					switch(TASK){
-						case 2:
-							if(done == 0){
-								switch(T2_state){
-									case 0:
-										// set psi setpoint +90
-										mb_setpoints.psi -= M_PI/2;
-										T2_state = 1;
-										break;
-									case 1:
-										// check turn done?
-										if(fabs(mb_odometry.psi-mb_setpoints.psi) < 0.02){
-											T2_turn += 1;
-											// check task done?
-											if(T2_turn == 1){
-												T2_round += 1;
-												T2_turn = 0;
-												if(T2_round == 4){
-													done = 1;
-												}
+			if(!mb_setpoints.manual_ctl){
+			// Auto Mode
+			//send motor commands
+				switch(TASK){
+					case 2:
+						if(done == 0){
+							switch (T2_state)
+							{
+								case 0:
+									if(mb_setpoints.psi - pre_phi > M_PI/2){
+										mb_setpoints.turn_velocity = 0;
+										mb_setpoints.psi = pre_phi + M_PI/2;
+										pre_phi = mb_setpoints.psi;
+										
+										T2_turn += 1;
+										if(T2_turn == 4){
+											T2_turn = 0;
+											T2_round += 1;
+											if(T2_round == 4){
+												mb_setpoints.fwd_velocity = 0;
+												mb_setpoints.turn_velocity = 0;
 											}
-											// into state2
-											// printf("\n~~~Case 1 done~~~~\n");
-											T2_state = 2;
 										}
-										break;
-									case 2:
-										// set phi adding 1m
-										if(fabs(mb_odometry.phi-pre_phi) < 0.9  && fabs(mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)<0.1)){
-											// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
-											mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
-										}else{
-											mb_setpoints.fwd_velocity = 0;
-											mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
-											pre_phi = mb_setpoints.phi*(WHEEL_DIAMETER/2);
-											T2_state = 3;
+										T2_state = 2;
+									}
+									break;
+								
+								case 2:
+									if((mb_odometry.phi-pre_phi) < 0.9){
+										mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+									}else{
+										mb_setpoints.turn_velocity = 0.5*RATE_SENST_TURN;
+										pre_phi += 1;
+										T2_state = 0;
+									}
+									break;
+
+								default:
+									break;
+							}
+						}
+						
+					case 4:
+						if(done == 0){
+							switch(T2_state){
+								case 0:
+									// set psi setpoint +90
+									mb_setpoints.psi -= M_PI/2;
+									T2_state = 1;
+									break;
+								case 1:
+									// check turn done?
+									if(fabs(mb_odometry.psi-mb_setpoints.psi) < 0.02){
+										T2_turn += 1;
+										// check task done?
+										if(T2_turn == 1){
+											T2_round += 1;
+											T2_turn = 0;
+											if(T2_round == 4){
+												done = 1;
+											}
 										}
-										break;
-									case 3:
-										// check finish straight?
-										// printf("TASK 2: Case 3\n");
+										// into state2
+										// printf("\n~~~Case 1 done~~~~\n");
+										T2_state = 2;
+									}
+									break;
+								case 2:
+									// set phi adding 1m
+									if(fabs(mb_odometry.phi-pre_phi) < 0.9  && (mb_setpoints.phi - (pre_phi+1)/(WHEEL_DIAMETER/2)) < 0){
+										// mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+										mb_setpoints.fwd_velocity = 0.5*RATE_SENST_FWD;
+									}else{
+										mb_setpoints.fwd_velocity = 0;
+										mb_setpoints.phi = (pre_phi + 1)/(WHEEL_DIAMETER/2); //
+										pre_phi = mb_setpoints.phi*(WHEEL_DIAMETER/2);
+										T2_state = 3;
+									}
+									break;
+								case 3:
+									// check finish straight?
+									// printf("TASK 2: Case 3\n");
 
-										if(fabs(mb_odometry.phi/(WHEEL_DIAMETER/2)-mb_setpoints.phi) < 0.05){
-											// printf("\n~~~Case 3 done~~~~\n");
-											T2_state = 0;
-										}
-										break;
-								}
+									if(fabs(mb_odometry.phi/(WHEEL_DIAMETER/2)-mb_setpoints.phi) < 0.05){
+										// printf("\n~~~Case 3 done~~~~\n");
+										T2_state = 0;
+									}
+									break;
+								default:
+									break;
 							}
-							break;
+						}
+						break;
 
-						case 3:
-							if(mb_state.phi - start_phi >= 11.2/(WHEEL_DIAMETER/2) || done == 1){
-								mb_setpoints.fwd_velocity = 0.0;
-								// mb_setpoints.theta = 0.0;    		
-								done = 1;
-							}
-							else {
-								mb_setpoints.fwd_velocity = 0.5 * RATE_SENST_FWD;   //adjust normalized fwd velocity based on speed/timing/theta .... 
-								// mb_setpoints.theta = 0.15;			find value for theta to set if u want to use this
-							}
-							break;
-						default:
-							continue;
-					}
-
-					if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
-					if(fabs(mb_setpoints.turn_velocity) > 0.001) mb_setpoints.psi += mb_setpoints.turn_velocity*DT/WHEEL_BASE;
-
+					case 3:
+						if(mb_state.phi - start_phi >= 11.2/(WHEEL_DIAMETER/2) || done == 1){
+							mb_setpoints.fwd_velocity = 0.0;
+							// mb_setpoints.theta = 0.0;    		
+							done = 1;
+						}
+						else {
+							mb_setpoints.fwd_velocity = 0.5 * RATE_SENST_FWD;   //adjust normalized fwd velocity based on speed/timing/theta .... 
+							// mb_setpoints.theta = 0.15;			find value for theta to set if u want to use this
+						}
+						break;
+					default:
+						continue;
 				}
 
-				if(mb_setpoints.manual_ctl){
-				// Manual Mode
-					fwd_input = rc_dsm_ch_normalized(FWD_CH) * FWD_POL;
-					turn_input = rc_dsm_ch_normalized(TURN_CH) * TURN_POL;
+				if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
+				if(fabs(mb_setpoints.turn_velocity) > 0.001) mb_setpoints.psi += mb_setpoints.turn_velocity*DT/WHEEL_BASE;
 
-					rc_saturate_double(&fwd_input, -1.0, 1.0);
-					rc_saturate_double(&turn_input, -1.0, 1.0);
+			}
 
-					if(fabs(fwd_input)<DEAD_ZONE) fwd_input = 0.0;
-					if(fabs(turn_input)<DEAD_ZONE) turn_input = 0.0;
+			if(mb_setpoints.manual_ctl){
+			// Manual Mode
+				fwd_input = rc_dsm_ch_normalized(FWD_CH) * FWD_POL;
+				turn_input = rc_dsm_ch_normalized(TURN_CH) * TURN_POL;
 
-					mb_setpoints.fwd_velocity = fwd_input * RATE_SENST_FWD;
-					mb_setpoints.turn_velocity = turn_input * RATE_SENST_TURN;
+				rc_saturate_double(&fwd_input, -1.0, 1.0);
+				rc_saturate_double(&turn_input, -1.0, 1.0);
 
-					if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
-					if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity*DT/WHEEL_BASE;
-				}
+				if(fabs(fwd_input)<DEAD_ZONE) fwd_input = 0.0;
+				if(fabs(turn_input)<DEAD_ZONE) turn_input = 0.0;
 
+				mb_setpoints.fwd_velocity = fwd_input * RATE_SENST_FWD;
+				mb_setpoints.turn_velocity = turn_input * RATE_SENST_TURN;
+
+				if(fabs(mb_setpoints.fwd_velocity) > 0.001) mb_setpoints.phi += mb_setpoints.fwd_velocity*DT/(WHEEL_DIAMETER/2);
+				if(fabs(mb_setpoints.turn_velocity)>0.001) mb_setpoints.psi += mb_setpoints.turn_velocity*DT/WHEEL_BASE;
+			}
 		}
 		else if(rc_dsm_is_connection_active()==0){
-			mb_setpoints.theta = 0;
+			// mb_setpoints.theta = 0;
 			mb_setpoints.fwd_velocity = 0;
 			mb_setpoints.turn_velocity = 0;
 			mb_setpoints.manual_ctl = 1;
@@ -663,4 +656,71 @@ void* __battery_checker(void* ptr)
                 rc_usleep(1000000 / BATTERY_CHECK_HZ);
         }
         return NULL;
+}
+
+
+void load_cfg_file(){
+		//attach controller function to IMU interrupt
+	printf("initializing controllers...\n");
+	mb_controller_init();
+									
+	if(rc_filter_pid(&SLC_D1, body_angle.kp, body_angle.ki, body_angle.kd, body_angle.tf, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D1.gain = D1_GAIN;
+	rc_filter_enable_saturation(&SLC_D1, -1.0, 1.0);
+	rc_filter_enable_soft_start(&SLC_D1, SOFT_START_TIME/DT);
+									
+	if(rc_filter_pid(&SLC_D2, position.kp, 0.0, position.kd, position.tf, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D2.gain = D2_GAIN;
+	rc_filter_enable_saturation(&SLC_D2, -0.15, 0.15); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_soft_start(&SLC_D2, SOFT_START_TIME/DT);
+
+	if(rc_filter_pid(&SLC_D2_i, 0.0, position.ki, 0.0, position.tf, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D2_i.gain = D2_GAIN;
+	rc_filter_enable_saturation(&SLC_D2_i, -0.05, 0.05); 			//need to find the limits for theta - now +/- 30 deg
+	rc_filter_enable_soft_start(&SLC_D2_i, SOFT_START_TIME/DT);
+
+	if(rc_filter_pid(&SLC_D3, steering.kp, steering.ki, steering.kd, steering.tf, DT)){
+			fprintf(stderr,"ERROR in rc_balance, failed to make filter D1\n");
+			return -1;
+	}
+	SLC_D3.gain = D3_GAIN;
+	rc_filter_enable_saturation(&SLC_D3, -1.0, 1.0); 			
+	rc_filter_enable_soft_start(&SLC_D3, SOFT_START_TIME/DT);
+
+	// Initialize LPFs for encoders
+	rc_filter_first_order_lowpass(&le_lpf, DT, TIME_CONSTANT);
+	rc_filter_first_order_lowpass(&re_lpf, DT, TIME_CONSTANT);
+
+	// Prefill filters
+	rc_filter_prefill_inputs(&SLC_D1, 0.0);
+	rc_filter_prefill_inputs(&SLC_D2, 0.0);
+	rc_filter_prefill_inputs(&SLC_D2_i, 0.0);
+	rc_filter_prefill_inputs(&SLC_D3, 0.0);
+	rc_filter_prefill_inputs(&le_lpf, 0.0);
+	rc_filter_prefill_inputs(&re_lpf, 0.0);
+	rc_filter_prefill_outputs(&SLC_D1, 0.0);
+	rc_filter_prefill_outputs(&SLC_D2, 0.0);
+	rc_filter_prefill_outputs(&SLC_D2_i, 0.0);
+	rc_filter_prefill_outputs(&SLC_D3, 0.0);
+	rc_filter_prefill_outputs(&le_lpf, 0.0);
+	rc_filter_prefill_outputs(&re_lpf, 0.0);
+
+
+	printf("Inner Loop controller SLC_D1:\n");
+	rc_filter_print(SLC_D1);
+
+	printf("Outer Loop position controller SLC_D2:\n");
+	rc_filter_print(SLC_D2);
+	
+	printf("Steering controller SLC_D3:\n");
+	rc_filter_print(SLC_D3);
 }

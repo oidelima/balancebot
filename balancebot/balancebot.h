@@ -70,5 +70,6 @@ void* printf_loop(void* ptr);
 int writeMatrixToFile(FILE* fp,  double matrix[], int num_var);
 
 void* __battery_checker(void* ptr);
+void load_cfg_file();
 
 #endif

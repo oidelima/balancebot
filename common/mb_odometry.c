@@ -16,10 +16,10 @@ void mb_odometry_init(mb_odometry_t* mb_odometry, float x, float y, float psi){
 
 void mb_odometry_update(mb_odometry_t* mb_odometry, mb_state_t* mb_state){
 /* TODO */
-    float encoder2distant = 2*M_PI/ENCODER_RES/GEAR_RATIO*WHEEL_DIAMETER/2;
+    float encoder2distant = 2*M_PI/ENCODER_RES/GEAR_RATIO;
 
-    float delta_SR = (mb_state->right_encoder - mb_odometry->last_right_encoder)*encoder2distant;
-    float delta_SL = (mb_state->left_encoder - mb_odometry->last_left_encoder)*encoder2distant;
+    float delta_SR = (mb_state->right_encoder - mb_odometry->last_right_encoder)*encoder2distant*WHEEL_R_DIA/2;
+    float delta_SL = (mb_state->left_encoder - mb_odometry->last_left_encoder)*encoder2distant*WHEEL_L_DIA/2;
     mb_odometry->last_right_encoder = mb_state->right_encoder;
     mb_odometry->last_left_encoder = mb_state->left_encoder;
 
