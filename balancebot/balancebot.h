@@ -44,7 +44,7 @@
 #define FWD_POL         1
 #define TURN_POL        1
 #define ARM_CH          5
-#define DEAD_ZONE       0.01
+#define DEAD_ZONE       0.03
 
 extern ctrl_params_t body_angle;
 extern ctrl_params_t position;

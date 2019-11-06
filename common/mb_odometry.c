@@ -36,13 +36,11 @@ void mb_odometry_update(mb_odometry_t* mb_odometry, mb_state_t* mb_state){
     float delta_S = (delta_SR + delta_SL)/2;
 
     float delta_psi_gyro = mb_state->gyro_z/SAMPLE_RATE_HZ;
-    // printf("\nalpha:  %7.3f |", alpha);
-    // printf("gyro :    %7.3f  |", delta_psi_gyro);
-    // printf("delta:    %7.3f ", fabsf(delta_psi_gyro - alpha));
-    if(fabsf(delta_psi_gyro - alpha) > THRESHOLD_DELTA_PSI){
-        alpha = delta_psi_gyro;
-        // printf("\ndelta_psi explode!!\n");
-    }
+
+    // if(fabsf(delta_psi_gyro - alpha) > THRESHOLD_DELTA_PSI){
+    //     alpha = delta_psi_gyro;
+    //     // printf("\ndelta_psi explode!!\n");
+    // }
 
 
     float delta_x = delta_S*cos(mb_odometry->psi + alpha/2);
