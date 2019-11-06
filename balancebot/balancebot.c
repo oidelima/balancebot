@@ -395,12 +395,18 @@ void* setpoint_control_loop(void* ptr){
 							switch(T2_state){
 								case 0:
 									// set psi setpoint +90
-									mb_setpoints.psi -= M_PI/2;
-									T2_state = 1;
+									if(fabs(mb_odometry.psi - pre_psi) < M_PI/3){
+										mb_setpoints.turn_velocity = 0.5*RATE_SENST_TURN;
+									}else{
+										mb_setpoints.turn_velocity = 0;
+										mb_setpoints.psi -= M_PI/2;
+										pre_psi = mb_setpoints.psi;
+										T2_state = 1;
+									}								
 									break;
 								case 1:
 									// check turn done?
-									if(fabs(mb_odometry.psi-mb_setpoints.psi) < 0.02){
+									if(fabs(mb_odometry.psi-mb_setpoints.psi) < 0.01){
 										T2_turn += 1;
 										// check task done?
 										if(T2_turn == 1){
@@ -411,7 +417,7 @@ void* setpoint_control_loop(void* ptr){
 											}
 										}
 										// into state2
-										// printf("\n~~~Case 1 done~~~~\n");
+										printf("\n~~~Case 1 done~~~~\n");
 										T2_state = 2;
 									}
 									break;
@@ -431,8 +437,8 @@ void* setpoint_control_loop(void* ptr){
 									// check finish straight?
 									// printf("TASK 2: Case 3\n");
 
-									if(fabs(mb_odometry.phi/(WHEEL_DIAMETER/2)-mb_setpoints.phi) < 0.05){
-										// printf("\n~~~Case 3 done~~~~\n");
+									if(fabs(mb_odometry.phi/(WHEEL_DIAMETER/2)-mb_setpoints.phi) < 0.02){
+										printf("\n~~~Case 3 done~~~~\n");
 										T2_state = 0;
 									}
 									break;
