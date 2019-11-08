@@ -361,6 +361,7 @@ void* setpoint_control_loop(void* ptr){
 	static int done = 0;
 	static int swtch = 0;
 	static double start_psi, start_phi, start_x, start_y;
+	static double offset = 0;
 
 	const double dist2r = 1.0/(WHEEL_DIAMETER/2);
 
@@ -456,6 +457,8 @@ void* setpoint_control_loop(void* ptr){
 							else if ((mb_state.phi - start_phi)>=11.5*dist2r && (mb_state.phi - start_phi)<15.5*dist2r) T2_round = 3;
 							printf("%d %d \n", T2_round, done);
 
+							offset = T2_round * 1.0;
+							
 							// if(mb_state.phi - start_phi >= 16.0*dist2r)
 							if((mb_state.phi - start_phi) >= 16.0*dist2r || done == 1){
 								mb_setpoints.fwd_velocity = 0.0;
@@ -468,22 +471,22 @@ void* setpoint_control_loop(void* ptr){
 								mb_setpoints.fwd_velocity = 1.0*RATE_SENST_FWD;   //adjust normalized fwd velocity based on speed/timing/theta ....
 
 								if(fmod((mb_state.phi - start_phi),4.0*dist2r) >= 0.9*dist2r &&  fmod((mb_state.phi - start_phi),4.0*dist2r) <= 1.1*dist2r){
-									if(mb_odometry.psi - start_psi < ((T2_round)*360+90)*M_PI/180) 
+									if(mb_odometry.psi - start_psi < ((T2_round)*360+90+offset)*M_PI/180) 
 										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
 									else mb_setpoints.turn_velocity = 0.0;
 								}
 								else if(fmod((mb_state.phi - start_phi),4.0*dist2r) >= 1.9*dist2r &&  fmod((mb_state.phi - start_phi),4.0*dist2r) <= 2.1*dist2r){
-									if(mb_odometry.psi - start_psi < ((T2_round)*360+180)*M_PI/180) 
+									if(mb_odometry.psi - start_psi < ((T2_round)*360+180+offset)*M_PI/180) 
 										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
 									else mb_setpoints.turn_velocity = 0.0;
 								}
 								else if(fmod((mb_state.phi - start_phi),4.0*dist2r) >= 2.9*dist2r &&  fmod((mb_state.phi - start_phi),4.0*dist2r) <= 3.1*dist2r){
-									if(mb_odometry.psi - start_psi <((T2_round)*360+270)*M_PI/180) 
+									if(mb_odometry.psi - start_psi <((T2_round)*360+270+offset)*M_PI/180) 
 										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
 									else mb_setpoints.turn_velocity = 0.0;
 								}
 								else if((fmod((mb_state.phi - start_phi),4.0*dist2r) >= 3.9*dist2r || fmod((mb_state.phi - start_phi),4.0*dist2r) <= 0.1*dist2r) && T2_round !=0){
-									if(mb_odometry.psi - start_psi < (T2_round*360)*M_PI/180) 
+									if(mb_odometry.psi - start_psi < (T2_round*360+offset)*M_PI/180) 
 										mb_setpoints.turn_velocity = 1.0*RATE_SENST_TURN;
 									else mb_setpoints.turn_velocity = 0.0;
 								}
